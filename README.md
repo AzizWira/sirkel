@@ -1,5 +1,7 @@
 # SIRKEL
 
+LINK WEBSITE : https://sirkel.awicode.com/
+
 **SIRKEL — Sistem Sirkular Elektronik Kota** adalah platform web untuk membantu warga mengelola elektronik yang tidak lagi digunakan melalui jalur **perbaikan, pemulihan material, penggunaan kembali, dan donasi** dengan proses yang dapat ditelusuri dari pengajuan sampai hasil akhir.
 
 Platform ini dikembangkan dengan fokus implementasi di **Surabaya**, dengan studi dan demo yang banyak menggunakan area **Gunung Anyar**. SIRKEL tidak memposisikan diri sebagai marketplace servis biasa; sistem berfungsi sebagai orkestrator alur circular e-waste yang menghubungkan warga, mitra penanganan, dan admin dalam satu chain-of-custody yang terdokumentasi.

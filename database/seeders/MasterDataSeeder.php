@@ -196,75 +196,47 @@ class MasterDataSeeder extends Seeder
         $this->question($generic, 'notes', 'Jelaskan gejala atau kondisi lain yang ingin diketahui mitra.', 'text', 6, [], 'Tuliskan hal lain yang Anda ketahui mengenai kondisi barang, misalnya “blender berbunyi tetapi pisau tidak berputar”, “charger hanya berfungsi jika kabel ditekuk”, atau “sudah lama tidak digunakan”. Tidak perlu memakai istilah teknis. Jika tidak ada informasi tambahan, kolom ini boleh dikosongkan.');
 
         $dataBearingCodes = [
-            'smartphone',
-            'feature-phone',
-            'tablet',
-            'laptop',
-            'desktop-pc',
-            'mini-pc',
-            'smartwatch',
-            'e-reader',
-            'external-storage',
-            'camera',
-            'game-console',
-            'handheld-console',
-            'other-mobile-computing',
+            'smartphone', 'feature-phone', 'tablet', 'laptop', 'desktop-pc', 'mini-pc', 'smartwatch', 'e-reader',
+            'external-storage', 'camera', 'game-console', 'handheld-console', 'other-mobile-computing',
         ];
         $batteryAwareCodes = ['smartphone', 'feature-phone', 'tablet', 'laptop', 'smartwatch', 'e-reader', 'camera', 'handheld-console'];
 
         foreach ($dataBearingCodes as $code) {
             $template = QuestionnaireTemplate::updateOrCreate(
-                ['code' => $code . '-assessment'],
-                ['name' => 'Cek Kondisi ' . $categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
+                ['code' => $code.'-assessment'],
+                ['name' => 'Cek Kondisi '.$categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
             );
             $this->cloneQuestions($generic, $template);
             $order = 7;
             if (in_array($code, $batteryAwareCodes, true)) {
                 $this->question($template, 'battery_swollen', 'Apakah baterai/perangkat terlihat menggembung atau bentuknya berubah?', 'single', $order++, [
-                    ['yes', 'Ya'],
-                    ['no', 'Tidak'],
-                    ['unknown', 'Tidak tahu'],
+                    ['yes', 'Ya'], ['no', 'Tidak'], ['unknown', 'Tidak tahu'],
                 ], 'Baterai menggembung dapat membuat bodi, layar, atau penutup terangkat. Jangan menekan, mengisi daya, atau membongkar perangkat jika ada tanda tersebut. Jika tidak dapat memastikan, pilih “Tidak tahu”.');
             }
             $this->question($template, 'personal_data', 'Apakah perangkat masih menyimpan data pribadi?', 'single', $order, [
-                ['yes', 'Ya'],
-                ['no', 'Sudah dibersihkan'],
-                ['unknown', 'Tidak tahu'],
+                ['yes', 'Ya'], ['no', 'Sudah dibersihkan'], ['unknown', 'Tidak tahu'],
             ], 'Data pribadi dapat berupa foto, dokumen, akun, kontak, rekaman, atau file lain yang masih tersimpan. Jika perangkat masih dapat diakses dan datanya belum dihapus, pilih “Ya”. Jika sudah melakukan reset/penghapusan data, pilih “Sudah dibersihkan”. Jika perangkat tidak dapat diperiksa atau Anda tidak yakin, pilih “Tidak tahu”.');
         }
 
         foreach (['battery', 'powerbank', 'ups'] as $code) {
             $template = QuestionnaireTemplate::updateOrCreate(
-                ['code' => $code . '-safety'],
-                ['name' => 'Cek Kondisi ' . $categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
+                ['code' => $code.'-safety'],
+                ['name' => 'Cek Kondisi '.$categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
             );
             $this->question($template, 'power_status', 'Apakah baterai/perangkat daya ini masih berfungsi?', 'single', 1, [
-                ['normal', 'Ya, berfungsi normal'],
-                ['partial', 'Berfungsi sebagian / tidak stabil'],
-                ['off', 'Tidak berfungsi'],
-                ['unknown', 'Tidak tahu'],
+                ['normal', 'Ya, berfungsi normal'], ['partial', 'Berfungsi sebagian / tidak stabil'], ['off', 'Tidak berfungsi'], ['unknown', 'Tidak tahu'],
             ], 'Pilih berdasarkan pemakaian terakhir yang Anda ketahui. “Berfungsi sebagian / tidak stabil” dapat berarti daya cepat habis, pengisian terputus-putus, atau fungsi tidak konsisten. Jangan mencoba menyalakan, mengisi, menekan, atau membongkar perangkat daya yang tampak rusak hanya untuk menjawab pertanyaan ini.');
             $this->question($template, 'hazard_sign', 'Apakah ada tanda bahaya seperti terbakar, meleleh, panas tidak wajar, atau bau menyengat?', 'single', 2, [
-                ['yes', 'Ya, ada tanda bahaya'],
-                ['no', 'Tidak terlihat'],
-                ['unknown', 'Tidak tahu'],
+                ['yes', 'Ya, ada tanda bahaya'], ['no', 'Tidak terlihat'], ['unknown', 'Tidak tahu'],
             ], 'Periksa hanya dari luar. Jangan mengisi daya atau menyalakan perangkat jika ada bekas terbakar, bagian meleleh, panas tidak wajar, percikan, atau bau menyengat. Jika tidak yakin, pilih “Tidak tahu”.');
             $this->question($template, 'battery_swollen', 'Apakah baterai terlihat menggembung atau bentuk perangkat berubah?', 'single', 3, [
-                ['yes', 'Ya'],
-                ['no', 'Tidak'],
-                ['unknown', 'Tidak tahu'],
+                ['yes', 'Ya'], ['no', 'Tidak'], ['unknown', 'Tidak tahu'],
             ], 'Baterai menggembung dapat terlihat lebih tebal, berubah bentuk, atau mendorong penutup perangkat. Jangan menekan, menusuk, membuka, atau mencoba meratakan baterai. Jika bentuknya sulit dipastikan, pilih “Tidak tahu”.');
             $this->question($template, 'battery_leaking', 'Apakah terlihat kebocoran, cairan, atau korosi yang tidak biasa?', 'single', 4, [
-                ['yes', 'Ya'],
-                ['no', 'Tidak'],
-                ['unknown', 'Tidak tahu'],
+                ['yes', 'Ya'], ['no', 'Tidak'], ['unknown', 'Tidak tahu'],
             ], 'Perhatikan hanya dari luar tanpa membongkar barang. Tanda yang dimaksud antara lain cairan, kerak/korosi tidak biasa, bau menyengat, atau bekas kebocoran. Jika ada tanda tersebut, hindari kontak langsung dan pilih “Ya”. Jika tidak dapat memastikan, pilih “Tidak tahu”.');
             $this->question($template, 'damage_level', 'Bagaimana kondisi fisiknya secara umum?', 'single', 5, [
-                ['none', 'Normal'],
-                ['minor', 'Kerusakan ringan'],
-                ['moderate', 'Kerusakan sedang'],
-                ['severe', 'Kerusakan berat'],
-                ['unknown', 'Tidak tahu'],
+                ['none', 'Normal'], ['minor', 'Kerusakan ringan'], ['moderate', 'Kerusakan sedang'], ['severe', 'Kerusakan berat'], ['unknown', 'Tidak tahu'],
             ], 'Nilai kondisi yang terlihat dari luar. Kerusakan berat mencakup bentuk berubah parah, pecah, bekas terbakar, atau kerusakan yang membuat Anda ragu untuk menyentuh/menggunakannya. Jangan melakukan pengujian tambahan jika ada tanda risiko.');
             $this->question($template, 'user_intent', 'Apa yang paling Anda inginkan untuk barang ini?', 'single', 6, [
                 ['safe_handover', 'Saya ingin menyerahkan/membuangnya dengan aman'],
@@ -275,14 +247,12 @@ class MasterDataSeeder extends Seeder
 
         foreach (['refrigerator', 'freezer', 'air-conditioner'] as $code) {
             $template = QuestionnaireTemplate::updateOrCreate(
-                ['code' => $code . '-assessment'],
-                ['name' => 'Cek Kondisi ' . $categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
+                ['code' => $code.'-assessment'],
+                ['name' => 'Cek Kondisi '.$categoryMap[$code]->name, 'device_category_id' => $categoryMap[$code]->id, 'device_group_id' => null, 'audience' => 'citizen', 'active' => true]
             );
             $this->cloneQuestions($generic, $template);
             $this->question($template, 'cooling_leak', 'Apakah terlihat kebocoran atau kerusakan pada pipa/sistem pendingin?', 'single', 7, [
-                ['yes', 'Ya'],
-                ['no', 'Tidak terlihat'],
-                ['unknown', 'Tidak tahu'],
+                ['yes', 'Ya'], ['no', 'Tidak terlihat'], ['unknown', 'Tidak tahu'],
             ], 'Periksa hanya dari luar. Tanda yang perlu diperhatikan antara lain pipa rusak, cairan/oli yang tidak biasa di sekitar sistem pendingin, suara desis, atau kerusakan akibat benturan pada bagian pendingin. Jangan membongkar pipa atau sistem pendingin.');
         }
 
@@ -304,153 +274,60 @@ class MasterDataSeeder extends Seeder
         // v1.0.28 disusun berlapis oleh QuestionnaireService.
         $partnerGeneric->questions()->delete();
         $this->question($partnerGeneric, 'power_status', 'Apakah fungsi utama perangkat masih bekerja?', 'single', 1, [
-            ['normal', 'Ya, berfungsi normal'],
-            ['partial', 'Ya, tetapi bermasalah'],
-            ['off', 'Tidak berfungsi'],
-            ['unknown', 'Belum dapat dipastikan'],
+            ['normal', 'Ya, berfungsi normal'], ['partial', 'Ya, tetapi bermasalah'], ['off', 'Tidak berfungsi'], ['unknown', 'Belum dapat dipastikan'],
         ], 'Nilai fungsi utama perangkat berdasarkan pemeriksaan fisik yang aman. Jangan melakukan pengujian yang meningkatkan risiko hanya untuk mengisi form.');
         $this->question($partnerGeneric, 'damage_level', 'Seberapa berat kerusakan perangkat secara keseluruhan?', 'single', 2, [
-            ['none', 'Tidak ada kerusakan berarti'],
-            ['minor', 'Ringan'],
-            ['moderate', 'Sedang'],
-            ['severe', 'Berat'],
-            ['unknown', 'Belum dapat dipastikan'],
+            ['none', 'Tidak ada kerusakan berarti'], ['minor', 'Ringan'], ['moderate', 'Sedang'], ['severe', 'Berat'], ['unknown', 'Belum dapat dipastikan'],
         ], 'Gunakan tingkat kerusakan berdasarkan kondisi aktual, bukan perkiraan warga. Kerusakan berat berarti perangkat tidak aman atau tidak realistis dipertahankan sebagai barang utuh tanpa pekerjaan besar.');
         $this->question($partnerGeneric, 'repair_feasible', 'Apakah perangkat masih layak dipertahankan sebagai barang utuh melalui perbaikan/refurbish?', 'single', 3, [
-            ['yes', 'Ya, layak diperbaiki / direfurbish'],
-            ['no', 'Tidak layak sebagai barang utuh'],
-            ['unknown', 'Belum dapat dipastikan'],
+            ['yes', 'Ya, layak diperbaiki / direfurbish'], ['no', 'Tidak layak sebagai barang utuh'], ['unknown', 'Belum dapat dipastikan'],
         ], 'Pertanyaan ini menilai kelayakan mempertahankan perangkat sebagai barang utuh. Jika tidak layak, komponen atau materialnya masih dapat memiliki nilai dan dapat masuk jalur pemulihan.');
         $this->question($partnerGeneric, 'hazard_found', 'Apakah ditemukan kondisi yang memerlukan penanganan khusus?', 'single', 4, [
-            ['yes', 'Ya'],
-            ['no', 'Tidak'],
-            ['unknown', 'Belum dapat dipastikan'],
+            ['yes', 'Ya'], ['no', 'Tidak'], ['unknown', 'Belum dapat dipastikan'],
         ], 'Contohnya baterai menggembung/bocor, bekas terbakar, risiko listrik, cairan berbahaya, atau kondisi lain yang tidak aman ditangani dengan proses biasa.');
         $this->question($partnerGeneric, 'recovery_potential', 'Jika perangkat tidak dipertahankan sebagai barang utuh, apa yang masih dapat dipulihkan?', 'single', 5, [
-            ['components', 'Komponen yang masih bernilai guna'],
-            ['materials', 'Material seperti logam/plastik/kabel'],
-            ['both', 'Komponen dan material'],
-            ['none', 'Belum terlihat nilai pemulihan'],
-            ['unknown', 'Belum dapat dipastikan'],
+            ['components', 'Komponen yang masih bernilai guna'], ['materials', 'Material seperti logam/plastik/kabel'], ['both', 'Komponen dan material'], ['none', 'Belum terlihat nilai pemulihan'], ['unknown', 'Belum dapat dipastikan'],
         ], 'Pilih berdasarkan hasil pemeriksaan dan kemampuan pemulihan yang tersedia. Ini bukan kewajiban membongkar barang pada tahap pemeriksaan.');
 
         $partnerGroupExtra = [
-            'mobile-computing' => [
-                'data_condition',
-                'Bagaimana kondisi bagian penyimpanan/data perangkat?',
-                [
-                    ['safe', 'Sudah aman / tidak ada data yang perlu ditangani'],
-                    ['needs_handling', 'Masih perlu penanganan data'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Periksa hanya sesuai prosedur mitra. Jangan membuka atau menyalin data pribadi warga di luar kebutuhan penanganan perangkat.'
-            ],
-            'accessories-power' => [
-                'power_safety',
-                'Bagaimana kondisi kelistrikan/baterainya?',
-                [
-                    ['safe', 'Tidak ditemukan indikasi bahaya'],
-                    ['unstable', 'Tidak stabil / perlu pemeriksaan lanjutan'],
-                    ['hazard', 'Ada indikasi bahaya'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Perhatikan panas tidak wajar, kebocoran, bentuk berubah, kabel terbuka, atau bekas terbakar.'
-            ],
-            'small-household' => [
-                'mechanical_condition',
-                'Bagaimana kondisi bagian mekanik/elektrik utama?',
-                [
-                    ['good', 'Masih layak'],
-                    ['repairable', 'Bermasalah tetapi masih dapat ditangani'],
-                    ['failed', 'Rusak berat / tidak layak'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Nilai bagian utama seperti motor, elemen pemanas, sakelar, atau mekanisme penggerak sesuai jenis perangkat.'
-            ],
-            'large-household' => [
-                'major_system_condition',
-                'Bagaimana kondisi sistem utama perangkat?',
-                [
-                    ['good', 'Masih layak'],
-                    ['repairable', 'Bermasalah tetapi masih dapat ditangani'],
-                    ['failed', 'Rusak berat / tidak layak'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Nilai sistem utama sesuai jenis barang, misalnya motor, kompresor, pemanas, kontrol, atau mekanisme pencucian.'
-            ],
-            'office-peripheral' => [
-                'peripheral_function',
-                'Apakah fungsi periferal/konektivitas utamanya bekerja?',
-                [
-                    ['normal', 'Normal'],
-                    ['partial', 'Sebagian / tidak stabil'],
-                    ['off', 'Tidak berfungsi'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Periksa fungsi utama seperti cetak, pindai, konektivitas, input, atau penyimpanan sesuai perangkat.'
-            ],
-            'audio-video' => [
-                'av_output',
-                'Bagaimana kondisi keluaran audio/video atau sensornya?',
-                [
-                    ['normal', 'Normal'],
-                    ['partial', 'Sebagian / bermasalah'],
-                    ['off', 'Tidak berfungsi'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Sesuaikan dengan jenis perangkat: layar, speaker, kamera, atau keluaran media lainnya.'
-            ],
-            'gaming-entertainment' => [
-                'gaming_function',
-                'Apakah fungsi utama permainan/kontrol masih bekerja?',
-                [
-                    ['normal', 'Normal'],
-                    ['partial', 'Sebagian / bermasalah'],
-                    ['off', 'Tidak berfungsi'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Nilai fungsi utama konsol/controller tanpa memaksa perangkat yang menunjukkan risiko listrik atau baterai.'
-            ],
-            'personal-care' => [
-                'hygiene_condition',
-                'Apakah kondisi perangkat aman dan layak untuk ditangani lebih lanjut?',
-                [
-                    ['safe', 'Ya'],
-                    ['needs_cleaning', 'Perlu pembersihan/dekontaminasi'],
-                    ['unsafe', 'Tidak aman'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Perangkat perawatan pribadi dapat memerlukan perhatian kebersihan sebelum proses reuse atau pembongkaran.'
-            ],
-            'lighting-tools' => [
-                'tool_function',
-                'Bagaimana kondisi fungsi listrik/gerak utama perangkat?',
-                [
-                    ['normal', 'Normal'],
-                    ['partial', 'Sebagian / bermasalah'],
-                    ['off', 'Tidak berfungsi'],
-                    ['unknown', 'Belum dapat dipastikan'],
-                ],
-                'Periksa sesuai prosedur keselamatan kerja dan hindari pengujian jika kabel atau bagian listrik terbuka.'
-            ],
-            'other-electronics' => [
-                'identification_confidence',
-                'Apakah jenis dan fungsi utama perangkat sudah dapat diidentifikasi?',
-                [
-                    ['yes', 'Ya'],
-                    ['partial', 'Sebagian'],
-                    ['no', 'Belum'],
-                ],
-                'Jika jenis perangkat belum jelas, jangan memaksakan outcome. Simpan pemeriksaan atau alihkan ke layanan yang lebih sesuai.'
-            ],
+            'mobile-computing' => ['data_condition', 'Bagaimana kondisi bagian penyimpanan/data perangkat?', [
+                ['safe', 'Sudah aman / tidak ada data yang perlu ditangani'], ['needs_handling', 'Masih perlu penanganan data'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Periksa hanya sesuai prosedur mitra. Jangan membuka atau menyalin data pribadi warga di luar kebutuhan penanganan perangkat.'],
+            'accessories-power' => ['power_safety', 'Bagaimana kondisi kelistrikan/baterainya?', [
+                ['safe', 'Tidak ditemukan indikasi bahaya'], ['unstable', 'Tidak stabil / perlu pemeriksaan lanjutan'], ['hazard', 'Ada indikasi bahaya'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Perhatikan panas tidak wajar, kebocoran, bentuk berubah, kabel terbuka, atau bekas terbakar.'],
+            'small-household' => ['mechanical_condition', 'Bagaimana kondisi bagian mekanik/elektrik utama?', [
+                ['good', 'Masih layak'], ['repairable', 'Bermasalah tetapi masih dapat ditangani'], ['failed', 'Rusak berat / tidak layak'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Nilai bagian utama seperti motor, elemen pemanas, sakelar, atau mekanisme penggerak sesuai jenis perangkat.'],
+            'large-household' => ['major_system_condition', 'Bagaimana kondisi sistem utama perangkat?', [
+                ['good', 'Masih layak'], ['repairable', 'Bermasalah tetapi masih dapat ditangani'], ['failed', 'Rusak berat / tidak layak'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Nilai sistem utama sesuai jenis barang, misalnya motor, kompresor, pemanas, kontrol, atau mekanisme pencucian.'],
+            'office-peripheral' => ['peripheral_function', 'Apakah fungsi periferal/konektivitas utamanya bekerja?', [
+                ['normal', 'Normal'], ['partial', 'Sebagian / tidak stabil'], ['off', 'Tidak berfungsi'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Periksa fungsi utama seperti cetak, pindai, konektivitas, input, atau penyimpanan sesuai perangkat.'],
+            'audio-video' => ['av_output', 'Bagaimana kondisi keluaran audio/video atau sensornya?', [
+                ['normal', 'Normal'], ['partial', 'Sebagian / bermasalah'], ['off', 'Tidak berfungsi'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Sesuaikan dengan jenis perangkat: layar, speaker, kamera, atau keluaran media lainnya.'],
+            'gaming-entertainment' => ['gaming_function', 'Apakah fungsi utama permainan/kontrol masih bekerja?', [
+                ['normal', 'Normal'], ['partial', 'Sebagian / bermasalah'], ['off', 'Tidak berfungsi'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Nilai fungsi utama konsol/controller tanpa memaksa perangkat yang menunjukkan risiko listrik atau baterai.'],
+            'personal-care' => ['hygiene_condition', 'Apakah kondisi perangkat aman dan layak untuk ditangani lebih lanjut?', [
+                ['safe', 'Ya'], ['needs_cleaning', 'Perlu pembersihan/dekontaminasi'], ['unsafe', 'Tidak aman'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Perangkat perawatan pribadi dapat memerlukan perhatian kebersihan sebelum proses reuse atau pembongkaran.'],
+            'lighting-tools' => ['tool_function', 'Bagaimana kondisi fungsi listrik/gerak utama perangkat?', [
+                ['normal', 'Normal'], ['partial', 'Sebagian / bermasalah'], ['off', 'Tidak berfungsi'], ['unknown', 'Belum dapat dipastikan'],
+            ], 'Periksa sesuai prosedur keselamatan kerja dan hindari pengujian jika kabel atau bagian listrik terbuka.'],
+            'other-electronics' => ['identification_confidence', 'Apakah jenis dan fungsi utama perangkat sudah dapat diidentifikasi?', [
+                ['yes', 'Ya'], ['partial', 'Sebagian'], ['no', 'Belum'],
+            ], 'Jika jenis perangkat belum jelas, jangan memaksakan outcome. Simpan pemeriksaan atau alihkan ke layanan yang lebih sesuai.'],
         ];
 
         $partnerGroupTemplates = [];
         foreach ($partnerGroupExtra as $groupCode => [$questionCode, $questionText, $options, $help]) {
             $template = QuestionnaireTemplate::updateOrCreate(
-                ['code' => 'partner-' . $groupCode . '-assessment'],
+                ['code' => 'partner-'.$groupCode.'-assessment'],
                 [
-                    'name' => 'Pemeriksaan Mitra — ' . $map[$groupCode]->name,
+                    'name' => 'Pemeriksaan Mitra — '.$map[$groupCode]->name,
                     'device_category_id' => null,
                     'device_group_id' => $map[$groupCode]->id,
                     'audience' => 'partner',
@@ -464,9 +341,9 @@ class MasterDataSeeder extends Seeder
 
         foreach (['refrigerator', 'freezer', 'air-conditioner'] as $code) {
             $template = QuestionnaireTemplate::updateOrCreate(
-                ['code' => 'partner-' . $code . '-assessment'],
+                ['code' => 'partner-'.$code.'-assessment'],
                 [
-                    'name' => 'Pemeriksaan Mitra — ' . $categoryMap[$code]->name,
+                    'name' => 'Pemeriksaan Mitra — '.$categoryMap[$code]->name,
                     'device_category_id' => $categoryMap[$code]->id,
                     'device_group_id' => null,
                     'audience' => 'partner',
@@ -475,15 +352,10 @@ class MasterDataSeeder extends Seeder
             );
             $template->questions()->delete();
             $this->question($template, 'cooling_system_status', 'Bagaimana kondisi sistem pendingin/kompresor?', 'single', 7, [
-                ['normal', 'Masih bekerja normal'],
-                ['partial', 'Bekerja tetapi bermasalah'],
-                ['failed', 'Tidak bekerja / rusak berat'],
-                ['unknown', 'Belum dapat dipastikan'],
+                ['normal', 'Masih bekerja normal'], ['partial', 'Bekerja tetapi bermasalah'], ['failed', 'Tidak bekerja / rusak berat'], ['unknown', 'Belum dapat dipastikan'],
             ], 'Nilai berdasarkan pemeriksaan yang aman. Tidak perlu membuka sistem refrigeran hanya untuk mengisi form.');
             $this->question($template, 'refrigerant_risk', 'Apakah ada indikasi kebocoran atau risiko pada sistem refrigeran?', 'single', 8, [
-                ['yes', 'Ya'],
-                ['no', 'Tidak'],
-                ['unknown', 'Belum dapat dipastikan'],
+                ['yes', 'Ya'], ['no', 'Tidak'], ['unknown', 'Belum dapat dipastikan'],
             ], 'Jika ada indikasi kebocoran, jangan lepaskan refrigeran ke lingkungan. Pilih jalur penanganan khusus jika proses yang dibutuhkan berada di luar kemampuan mitra saat ini.');
         }
 
@@ -531,7 +403,7 @@ class MasterDataSeeder extends Seeder
             ['ai.quota.condition_description_free', (string) config('sirkel.ai.quota.condition_description_free', 20), 'integer', 'ai'],
             ['ai.quota.asset_intake_price_idr', (string) config('sirkel.ai.quota.asset_intake_price_idr', 2000), 'integer', 'ai'],
             ['ai.quota.condition_description_price_idr', (string) config('sirkel.ai.quota.condition_description_price_idr', 500), 'integer', 'ai'],
-            ['ai.topup_admin_whatsapp', '628111111111', 'string', 'ai'],
+            ['ai.topup_admin_whatsapp', '6289650484363', 'string', 'ai'],
         ];
         foreach ($settings as $setting) {
             SystemSetting::updateOrCreate(
@@ -567,7 +439,7 @@ class MasterDataSeeder extends Seeder
                 $question->text,
                 $question->type,
                 $question->sort_order,
-                $question->options->map(fn($option) => [$option->value, $option->label])->all(),
+                $question->options->map(fn ($option) => [$option->value, $option->label])->all(),
                 $question->help_text
             );
         }

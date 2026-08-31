@@ -18,6 +18,8 @@ use Illuminate\Database\Seeder;
 
 class DemoSeeder extends Seeder
 {
+    private const DEMO_CONTACT_NUMBER = '6289650484363';
+
     public function run(): void
     {
         $password = 'password123';
@@ -28,7 +30,7 @@ class DemoSeeder extends Seeder
                 'name' => 'Admin SIRKEL',
                 'password' => $password,
                 'role' => UserRole::ADMIN,
-                'whatsapp' => '628111111111',
+                'whatsapp' => self::DEMO_CONTACT_NUMBER,
                 'email_verified_at' => now(),
                 'profile_completed_at' => now(),
                 'district' => 'Genteng',
@@ -42,7 +44,7 @@ class DemoSeeder extends Seeder
                 'name' => 'Warga Demo',
                 'password' => $password,
                 'role' => UserRole::USER,
-                'whatsapp' => '628122222222',
+                'whatsapp' => self::DEMO_CONTACT_NUMBER,
                 'email_verified_at' => now(),
                 'profile_completed_at' => now(),
                 'district' => 'Gunung Anyar',
@@ -51,9 +53,9 @@ class DemoSeeder extends Seeder
         );
 
         $allCategoryCodes = DeviceCategory::query()->where('active', true)->pluck('code')->all();
-        $codesForGroups = static fn(array $groups): array => DeviceCategory::query()
+        $codesForGroups = static fn (array $groups): array => DeviceCategory::query()
             ->where('active', true)
-            ->whereHas('group', fn($q) => $q->whereIn('code', $groups))
+            ->whereHas('group', fn ($q) => $q->whereIn('code', $groups))
             ->pluck('code')
             ->all();
 
@@ -358,7 +360,7 @@ class DemoSeeder extends Seeder
                     'name' => $spec['name'],
                     'password' => $password,
                     'role' => UserRole::PARTNER,
-                    'whatsapp' => '62813333' . str_pad((string) ($index + 1), 5, '0', STR_PAD_LEFT),
+                    'whatsapp' => self::DEMO_CONTACT_NUMBER,
                     'email_verified_at' => now(),
                     'profile_completed_at' => now(),
                     'district' => $spec['district'],
@@ -370,9 +372,9 @@ class DemoSeeder extends Seeder
                 ['user_id' => $user->id],
                 [
                     'business_name' => $spec['name'],
-                    'responsible_name' => 'Operator Demo ' . ($index + 1),
+                    'responsible_name' => 'Operator Demo '.($index + 1),
                     'phone' => $user->whatsapp,
-                    'address' => 'Lokasi demo ' . $spec['name'] . ', Surabaya',
+                    'address' => 'Lokasi demo '.$spec['name'].', Surabaya',
                     'district' => $spec['district'],
                     'village' => $spec['village'],
                     'latitude' => $spec['lat'],
