@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /partner/
+Disallow: /app/
+Disallow: /notifikasi
+Disallow: /regions/
+Disallow: /auth/
