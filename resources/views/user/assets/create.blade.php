@@ -99,7 +99,8 @@
         <p class="muted" data-asset-camera-state>Menyiapkan kamera...</p>
         <div class="cluster asset-modal-actions">
             <button class="btn" type="button" data-asset-camera-close>Batal</button>
-            <button class="btn btn-primary" type="button" data-asset-camera-capture>Ambil Foto</button>
+            <button class="btn" type="button" data-asset-camera-native>Buka Kamera Ponsel</button>
+            <button class="btn btn-primary" type="button" data-asset-camera-capture disabled>Ambil Foto</button>
         </div>
     </div>
 </div>

@@ -9,15 +9,23 @@
         $ogImage = asset('brand/sirkel-wordmark-light.png');
     @endphp
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $metaTitle }}</title>
     <meta name="description" content="{{ $metaDescription }}">
     <meta name="robots" content="{{ $metaRobots }}">
-    <meta name="theme-color" content="#0f766e">
+    <meta name="theme-color" content="#134a43">
     <link rel="canonical" href="{{ $canonicalUrl }}">
     <link rel="sitemap" type="application/xml" href="{{ route('sitemap') }}">
-    <link rel="icon" type="image/png" href="{{ asset('brand/sirkel-favicon.png') }}">
+    <meta name="application-name" content="SIRKEL">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SIRKEL">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('brand/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="128x128" href="{{ asset('brand/sirkel-favicon.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('brand/apple-touch-icon.png') }}">
     <x-theme-bootstrap/>
 
     <meta property="og:locale" content="id_ID">
@@ -49,6 +57,7 @@
         </nav>
 
         <div class="nav-actions">
+            <button class="btn pwa-install-button" type="button" hidden data-pwa-install>Instal</button>
             <button class="icon-btn" type="button" onclick="cycleSirkelTheme()" title="Ganti tema" aria-label="Ganti tema">◐</button>
             @auth
                 <a class="btn btn-primary" href="{{ auth()->user()->isAdmin()?route('admin.dashboard'):(auth()->user()->isPartner()?route('partner.dashboard'):route('user.dashboard')) }}">Buka Aplikasi</a>
@@ -71,6 +80,7 @@
             <a href="{{ route('public.education') }}">Edukasi</a>
         </nav>
         <div class="public-mobile-actions">
+            <button class="btn pwa-install-button" type="button" hidden data-pwa-install>Instal SIRKEL</button>
             <button class="btn" type="button" onclick="cycleSirkelTheme()">◐ Ganti Tema</button>
             @auth
                 <a class="btn btn-primary" href="{{ auth()->user()->isAdmin()?route('admin.dashboard'):(auth()->user()->isPartner()?route('partner.dashboard'):route('user.dashboard')) }}">Buka Aplikasi</a>

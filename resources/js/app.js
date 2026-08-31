@@ -69,14 +69,33 @@ matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
     if (current === 'system') setSirkelTheme('system', false);
 });
 
+function syncSirkelModalBodyLock() {
+    const open = Boolean(document.querySelector('.modal-backdrop.show'));
+    document.body?.classList.toggle('sirkel-modal-open', open);
+}
+
+function setSirkelModalVisibility(modal, open) {
+    if (!modal) return;
+    modal.classList.toggle('show', Boolean(open));
+    if (modal.hasAttribute('aria-hidden')) modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+    window.requestAnimationFrame(syncSirkelModalBodyLock);
+}
+
 window.confirmWhatsapp = (formId, phoneId) => {
     const form = document.getElementById(formId), phone = document.getElementById(phoneId), modal = document.getElementById('wa-confirm');
     if (!form || !phone || !modal) return;
     document.getElementById('wa-preview').textContent = phone.value || '-';
-    modal.classList.add('show');
-    modal.querySelector('[data-confirm]').onclick = () => { modal.classList.remove('show'); form.submit(); };
+    setSirkelModalVisibility(modal, true);
+    modal.querySelector('[data-confirm]').onclick = () => { setSirkelModalVisibility(modal, false); form.submit(); };
 };
-window.closeModal = id => document.getElementById(id)?.classList.remove('show');
+window.closeModal = id => setSirkelModalVisibility(document.getElementById(id), false);
+
+window.addEventListener('DOMContentLoaded', () => {
+    const backdrops = [...document.querySelectorAll('.modal-backdrop')];
+    const observer = new MutationObserver(syncSirkelModalBodyLock);
+    backdrops.forEach(modal => observer.observe(modal, {attributes: true, attributeFilter: ['class']}));
+    syncSirkelModalBodyLock();
+});
 
 const maps = new Map();
 let generatedMapIdSequence = 0;
@@ -333,9 +352,14 @@ let activeAssetCameraState = null;
 let activeAssetCameraStream = null;
 
 function setAssetPhotoFiles(input, files) {
-    const transfer = new DataTransfer();
-    files.forEach(file => transfer.items.add(file));
-    input.files = transfer.files;
+    try {
+        const transfer = new DataTransfer();
+        files.forEach(file => transfer.items.add(file));
+        input.files = transfer.files;
+        return input.files.length === files.length;
+    } catch (error) {
+        return false;
+    }
 }
 
 function assetPhotoMessage(state, message = '', tone = '') {
@@ -449,11 +473,13 @@ async function addAssetPhotoFiles(state, rawFiles) {
     showAssetPhotoScopeNotice(state);
 }
 
+function setAssetMediaModalOpen(modal, open) {
+    setSirkelModalVisibility(modal, open);
+}
+
 function closeAssetPhotoScopeNotice() {
     const modal = document.querySelector('[data-asset-photo-scope-modal]');
-    if (!modal) return;
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    setAssetMediaModalOpen(modal, false);
 }
 
 function showAssetPhotoScopeNotice(state) {
@@ -461,21 +487,31 @@ function showAssetPhotoScopeNotice(state) {
     const modal = document.querySelector('[data-asset-photo-scope-modal]');
     if (!modal) return;
     state.scopeNoticeShown = true;
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
+    setAssetMediaModalOpen(modal, true);
 }
 
-function closeAssetCamera() {
+function stopAssetCameraStream() {
     activeAssetCameraStream?.getTracks?.().forEach(track => track.stop());
     activeAssetCameraStream = null;
-    activeAssetCameraState = null;
     const modal = document.querySelector('[data-asset-camera-modal]');
     const video = modal?.querySelector('[data-asset-camera-video]');
     if (video) video.srcObject = null;
-    if (modal) {
-        modal.classList.remove('show');
-        modal.setAttribute('aria-hidden', 'true');
-    }
+}
+
+function closeAssetCamera() {
+    stopAssetCameraStream();
+    activeAssetCameraState = null;
+    const modal = document.querySelector('[data-asset-camera-modal]');
+    setAssetMediaModalOpen(modal, false);
+}
+
+function openNativeAssetCamera(state) {
+    if (!state?.cameraFallback) return;
+    stopAssetCameraStream();
+    setAssetMediaModalOpen(document.querySelector('[data-asset-camera-modal]'), false);
+    // Harus terjadi langsung dari tap pengguna. Browser mobile dapat memblokir file
+    // picker jika .click() baru dipanggil setelah promise getUserMedia ditolak.
+    state.cameraFallback.click();
 }
 
 async function openAssetCamera(state) {
@@ -487,35 +523,53 @@ async function openAssetCamera(state) {
     const modal = document.querySelector('[data-asset-camera-modal]');
     const video = modal?.querySelector('[data-asset-camera-video]');
     const cameraState = modal?.querySelector('[data-asset-camera-state]');
-    if (!modal || !video || !navigator.mediaDevices?.getUserMedia) {
+    const captureButton = modal?.querySelector('[data-asset-camera-capture]');
+    const nativeButton = modal?.querySelector('[data-asset-camera-native]');
+
+    if (!modal || !video) {
         state.cameraFallback?.click();
         return;
     }
 
     activeAssetCameraState = state;
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
+    setAssetMediaModalOpen(modal, true);
+    if (captureButton) captureButton.disabled = true;
+    if (nativeButton) nativeButton.hidden = false;
+
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        if (cameraState) cameraState.textContent = 'Kamera langsung di browser tidak tersedia. Gunakan tombol “Buka Kamera Ponsel”.';
+        return;
+    }
+
     if (cameraState) cameraState.textContent = 'Meminta izin kamera...';
 
     try {
+        stopAssetCameraStream();
         activeAssetCameraStream = await navigator.mediaDevices.getUserMedia({
             video: {facingMode: {ideal: 'environment'}},
             audio: false,
         });
         video.srcObject = activeAssetCameraStream;
         await video.play();
-        if (cameraState) cameraState.textContent = 'Kamera siap. Arahkan ke barang lalu ambil foto.';
+        if (captureButton) captureButton.disabled = !(video.videoWidth && video.videoHeight);
+        if (cameraState) cameraState.textContent = video.videoWidth
+            ? 'Kamera siap. Arahkan ke barang lalu ambil foto.'
+            : 'Kamera terbuka. Tunggu sebentar sampai gambar siap.';
+        video.addEventListener('loadedmetadata', () => {
+            if (captureButton) captureButton.disabled = false;
+            if (cameraState) cameraState.textContent = 'Kamera siap. Arahkan ke barang lalu ambil foto.';
+        }, {once: true});
     } catch (error) {
-        closeAssetCamera();
-        state.cameraFallback?.click();
+        stopAssetCameraStream();
+        if (captureButton) captureButton.disabled = true;
+        if (cameraState) cameraState.textContent = 'Izin/kamera browser tidak dapat digunakan. Tekan “Buka Kamera Ponsel” untuk memakai aplikasi kamera perangkat.';
     }
 }
 
 function closeAssetAiModal() {
     const modal = document.querySelector('[data-asset-ai-modal]');
     if (!modal) return;
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    setAssetMediaModalOpen(modal, false);
     modal._assetPhotoState = null;
 }
 
@@ -629,8 +683,7 @@ function showAssetAiSuggestion(state, suggestion) {
                 : '';
         }
 
-        modal.classList.add('show');
-        modal.setAttribute('aria-hidden', 'false');
+        setAssetMediaModalOpen(modal, true);
         return;
     }
 
@@ -710,8 +763,7 @@ function showAssetAiSuggestion(state, suggestion) {
     if (keep) keep.textContent = hasUserData ? 'Tetap gunakan data saya' : 'Isi sendiri';
 
     updateAssetAiSelectionUi(modal);
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
+    setAssetMediaModalOpen(modal, true);
 }
 
 function applyAssetAiSuggestion(state) {
@@ -907,20 +959,37 @@ window.addEventListener('DOMContentLoaded', () => {
     const cameraModal = document.querySelector('[data-asset-camera-modal]');
     cameraModal?.querySelectorAll('[data-asset-camera-close]').forEach(button => button.addEventListener('click', closeAssetCamera));
     cameraModal?.addEventListener('click', event => { if (event.target === cameraModal) closeAssetCamera(); });
+    cameraModal?.querySelector('[data-asset-camera-native]')?.addEventListener('click', () => {
+        const state = activeAssetCameraState;
+        if (state) openNativeAssetCamera(state);
+    });
     cameraModal?.querySelector('[data-asset-camera-capture]')?.addEventListener('click', async () => {
         const state = activeAssetCameraState;
         const video = cameraModal.querySelector('[data-asset-camera-video]');
-        if (!state || !video?.videoWidth || !video?.videoHeight) return;
+        const cameraState = cameraModal.querySelector('[data-asset-camera-state]');
+        if (!state) return;
+        if (!video?.videoWidth || !video?.videoHeight) {
+            if (cameraState) cameraState.textContent = 'Gambar kamera belum siap. Tunggu sebentar atau gunakan “Buka Kamera Ponsel”.';
+            return;
+        }
         const canvas = document.createElement('canvas');
         const scale = Math.min(1, 2000 / Math.max(video.videoWidth, video.videoHeight));
         canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
         canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-        canvas.getContext('2d')?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, canvas.width, canvas.height);
+        const context = canvas.getContext('2d');
+        if (!context) {
+            if (cameraState) cameraState.textContent = 'Foto belum dapat dibuat di browser ini. Gunakan “Buka Kamera Ponsel”.';
+            return;
+        }
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, canvas.width, canvas.height);
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-        closeAssetCamera();
-        if (!blob) return;
+        if (!blob) {
+            if (cameraState) cameraState.textContent = 'Foto belum dapat dibuat. Gunakan “Buka Kamera Ponsel”.';
+            return;
+        }
         const file = new File([blob], `kamera-${Date.now()}.jpg`, {type: 'image/jpeg', lastModified: Date.now()});
         await addAssetPhotoFiles(state, [file]);
+        closeAssetCamera();
     });
 
     const aiModal = document.querySelector('[data-asset-ai-modal]');
@@ -1028,8 +1097,7 @@ function questionBasicHelp(field) {
 function closeQuestionHelpModal() {
     const modal = document.querySelector('[data-question-help-modal]');
     if (!modal) return;
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    setSirkelModalVisibility(modal, false);
 }
 
 function openQuestionHelpModal(button) {
@@ -1040,8 +1108,7 @@ function openQuestionHelpModal(button) {
     const copy = modal.querySelector('[data-question-help-copy]');
     if (title) title.textContent = field.dataset.questionText || 'Pertanyaan cek kondisi';
     if (copy) copy.textContent = questionBasicHelp(field);
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
+    setSirkelModalVisibility(modal, true);
 }
 
 function assessmentQuestionHasValue(field) {
@@ -2084,7 +2151,14 @@ function bindCameraFilePicker(picker) {
     const cameraButton = picker.querySelector('[data-camera-capture]');
     if (!main || !capture) return;
 
-    galleryButton?.addEventListener('click', () => main.click());
+    galleryButton?.addEventListener('click', () => {
+        if (capture.name) {
+            capture.removeAttribute('name');
+            capture.value = '';
+            main.disabled = false;
+        }
+        main.click();
+    });
     cameraButton?.addEventListener('click', () => capture.click());
     capture.addEventListener('change', () => {
         const incoming = Array.from(capture.files || []);
@@ -2093,19 +2167,76 @@ function bindCameraFilePicker(picker) {
         const selected = main.multiple
             ? [...Array.from(main.files || []), ...incoming].slice(0, maxFiles)
             : incoming.slice(-1);
+        let copied = false;
         try {
             const dt = new DataTransfer();
             selected.forEach(file => dt.items.add(file));
             main.files = dt.files;
-        } catch (error) {
-            // Fallback browser lama: setidaknya gunakan hasil kamera terbaru.
-            try { main.files = capture.files; } catch (_) {}
+            copied = main.files.length === selected.length;
+        } catch (error) {}
+        if (!copied) {
+            try {
+                main.files = capture.files;
+                copied = main.files.length > 0;
+            } catch (error) {}
+        }
+        if (copied) {
+            capture.removeAttribute('name');
+            main.disabled = false;
+            capture.value = '';
+        } else {
+            // Safari/browser lama dapat melarang assignment FileList. Dalam kasus itu,
+            // kirim input capture aslinya pada submit agar foto kamera tidak hilang.
+            capture.name = main.name;
+            main.disabled = true;
         }
         main.dispatchEvent(new Event('change', {bubbles: true}));
-        capture.value = '';
     });
 }
 
 window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-camera-file-picker]').forEach(bindCameraFilePicker);
 });
+
+
+// v1.0.57 — installable PWA shell and app icon support
+let deferredSirkelInstallPrompt = null;
+
+function syncSirkelInstallButtons(visible = Boolean(deferredSirkelInstallPrompt)) {
+    document.querySelectorAll('[data-pwa-install]').forEach(button => {
+        button.hidden = !visible;
+    });
+}
+
+if (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    document.documentElement.classList.add('pwa-standalone');
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredSirkelInstallPrompt = event;
+    syncSirkelInstallButtons(true);
+});
+
+document.addEventListener('click', async event => {
+    const button = event.target.closest?.('[data-pwa-install]');
+    if (!button || !deferredSirkelInstallPrompt) return;
+
+    const promptEvent = deferredSirkelInstallPrompt;
+    deferredSirkelInstallPrompt = null;
+    syncSirkelInstallButtons(false);
+    await promptEvent.prompt();
+    await promptEvent.userChoice.catch(() => null);
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredSirkelInstallPrompt = null;
+    syncSirkelInstallButtons(false);
+    document.documentElement.classList.add('pwa-standalone');
+});
+
+if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => null);
+    });
+}

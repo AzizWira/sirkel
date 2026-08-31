@@ -25,7 +25,7 @@ class DemoSeeder extends Seeder
         $password = 'password123';
 
         $admin = User::updateOrCreate(
-            ['email' => 'admin@sirkel.test'],
+            ['email' => 'admin@sirkel.awicode.com'],
             [
                 'name' => 'Admin SIRKEL',
                 'password' => $password,
@@ -39,7 +39,7 @@ class DemoSeeder extends Seeder
         );
 
         $warga = User::updateOrCreate(
-            ['email' => 'warga@sirkel.test'],
+            ['email' => 'warga@sirkel.awicode.com'],
             [
                 'name' => 'Warga Demo',
                 'password' => $password,
@@ -76,7 +76,7 @@ class DemoSeeder extends Seeder
         // immediately dead-end merely because its exact product name is absent from the catalogue.
         $specs = [
             [
-                'email' => 'repair@sirkel.test',
+                'email' => 'repair@sirkel.awicode.com',
                 'name' => 'Sirkular Service Gunung Anyar',
                 'district' => 'Gunung Anyar',
                 'village' => 'Gunung Anyar',
@@ -87,7 +87,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, ['charger', 'cable', 'power-adapter']))),
             ],
             [
-                'email' => 'repair-rungkut@sirkel.test',
+                'email' => 'repair-rungkut@sirkel.awicode.com',
                 'name' => 'Tekno Repair Rungkut',
                 'district' => 'Rungkut',
                 'village' => 'Kalirungkut',
@@ -98,7 +98,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $power, $smallHousehold, $office, $audioVideo, $gaming, $unknown))),
             ],
             [
-                'email' => 'repair-sukolilo@sirkel.test',
+                'email' => 'repair-sukolilo@sirkel.awicode.com',
                 'name' => 'Elektronik Sehat Sukolilo',
                 'district' => 'Sukolilo',
                 'village' => 'Keputih',
@@ -109,7 +109,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($smallHousehold, $largeHousehold, $personalCare, $lightingTools, $unknown))),
             ],
             [
-                'email' => 'devicecare@sirkel.test',
+                'email' => 'devicecare@sirkel.awicode.com',
                 'name' => 'Surabaya Device Care',
                 'district' => 'Wonokromo',
                 'village' => 'Darmo',
@@ -120,7 +120,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $office, $audioVideo, $gaming))),
             ],
             [
-                'email' => 'homecare@sirkel.test',
+                'email' => 'homecare@sirkel.awicode.com',
                 'name' => 'Surabaya Home Appliance Care',
                 'district' => 'Wonokromo',
                 'village' => 'Ngagel',
@@ -131,7 +131,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($power, $smallHousehold, $largeHousehold, $unknown))),
             ],
             [
-                'email' => 'avrepair@sirkel.test',
+                'email' => 'avrepair@sirkel.awicode.com',
                 'name' => 'Audio Visual Service Gubeng',
                 'district' => 'Gubeng',
                 'village' => 'Mojo',
@@ -142,7 +142,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($audioVideo, $gaming, ['projector', 'webcam']))),
             ],
             [
-                'email' => 'coolingcare@sirkel.test',
+                'email' => 'coolingcare@sirkel.awicode.com',
                 'name' => 'Surabaya Cooling Service',
                 'district' => 'Tenggilis Mejoyo',
                 'village' => 'Tenggilis Mejoyo',
@@ -153,7 +153,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($largeHousehold, ['voltage-stabilizer'], $unknown))),
             ],
             [
-                'email' => 'donation@sirkel.test',
+                'email' => 'donation@sirkel.awicode.com',
                 'name' => 'Reuse Hub Surabaya',
                 'district' => 'Gubeng',
                 'village' => 'Airlangga',
@@ -164,7 +164,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $largeHousehold, $office, $audioVideo, $gaming, $personalCare))),
             ],
             [
-                'email' => 'donation-rungkut@sirkel.test',
+                'email' => 'donation-rungkut@sirkel.awicode.com',
                 'name' => 'Berbagi Elektronik Rungkut',
                 'district' => 'Rungkut',
                 'village' => 'Kedung Baruk',
@@ -175,7 +175,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $office, $audioVideo, $gaming))),
             ],
             [
-                'email' => 'secondlife@sirkel.test',
+                'email' => 'secondlife@sirkel.awicode.com',
                 'name' => 'Second Life Surabaya',
                 'district' => 'Tegalsari',
                 'village' => 'Kedungdoro',
@@ -186,7 +186,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $office, $audioVideo, $gaming))),
             ],
             [
-                'email' => 'recovery@sirkel.test',
+                'email' => 'recovery@sirkel.awicode.com',
                 'name' => 'Mitra Recovery Surabaya',
                 'district' => 'Wonokromo',
                 'village' => 'Sawunggaling',
@@ -197,7 +197,7 @@ class DemoSeeder extends Seeder
                 'categories' => $allCategoryCodes,
             ],
             [
-                'email' => 'recovery-rungkut@sirkel.test',
+                'email' => 'recovery-rungkut@sirkel.awicode.com',
                 'name' => 'Eco Material Rungkut',
                 'district' => 'Rungkut',
                 'village' => 'Penjaringansari',
@@ -208,7 +208,7 @@ class DemoSeeder extends Seeder
                 'categories' => $allCategoryCodes,
             ],
             [
-                'email' => 'recovery-wonocolo@sirkel.test',
+                'email' => 'recovery-wonocolo@sirkel.awicode.com',
                 'name' => 'Recovery Hub Margorejo',
                 'district' => 'Wonocolo',
                 'village' => 'Margorejo',
@@ -219,7 +219,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $power, $smallHousehold, $largeHousehold, $office, $audioVideo, $gaming, $personalCare, $lightingTools))),
             ],
             [
-                'email' => 'battery@sirkel.test',
+                'email' => 'battery@sirkel.awicode.com',
                 'name' => 'Baterai Aman Surabaya',
                 'district' => 'Sukolilo',
                 'village' => 'Gebang Putih',
@@ -230,7 +230,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($batteryRisk, ['other-accessories-power', 'uncategorized-electronics']))),
             ],
             [
-                'email' => 'repair-tenggilis@sirkel.test',
+                'email' => 'repair-tenggilis@sirkel.awicode.com',
                 'name' => 'Elektronik Prima Tenggilis',
                 'district' => 'Tenggilis Mejoyo',
                 'village' => 'Kendangsari',
@@ -241,7 +241,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $office, $power, $unknown))),
             ],
             [
-                'email' => 'repair-mulyorejo@sirkel.test',
+                'email' => 'repair-mulyorejo@sirkel.awicode.com',
                 'name' => 'Mulyorejo Tech Repair',
                 'district' => 'Mulyorejo',
                 'village' => 'Kalisari',
@@ -252,7 +252,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $office, $audioVideo, $gaming, $power))),
             ],
             [
-                'email' => 'repair-tandes@sirkel.test',
+                'email' => 'repair-tandes@sirkel.awicode.com',
                 'name' => 'Tandes Elektronik Care',
                 'district' => 'Tandes',
                 'village' => 'Manukan Wetan',
@@ -263,7 +263,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $office, $audioVideo, $power, $unknown))),
             ],
             [
-                'email' => 'homecare-wiyung@sirkel.test',
+                'email' => 'homecare-wiyung@sirkel.awicode.com',
                 'name' => 'Wiyung Appliance Service',
                 'district' => 'Wiyung',
                 'village' => 'Babatan',
@@ -274,7 +274,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($power, $smallHousehold, $largeHousehold, $personalCare))),
             ],
             [
-                'email' => 'donation-gununganyar@sirkel.test',
+                'email' => 'donation-gununganyar@sirkel.awicode.com',
                 'name' => 'Gunung Anyar Reuse Point',
                 'district' => 'Gunung Anyar',
                 'village' => 'Rungkut Tengah',
@@ -285,7 +285,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $office, $audioVideo, $gaming))),
             ],
             [
-                'email' => 'donation-gayungan@sirkel.test',
+                'email' => 'donation-gayungan@sirkel.awicode.com',
                 'name' => 'Rumah Guna Ulang Gayungan',
                 'district' => 'Gayungan',
                 'village' => 'Ketintang',
@@ -296,7 +296,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $smallHousehold, $largeHousehold, $office, $audioVideo, $gaming, $personalCare))),
             ],
             [
-                'email' => 'recovery-kenjeran@sirkel.test',
+                'email' => 'recovery-kenjeran@sirkel.awicode.com',
                 'name' => 'Recovery Material Kenjeran',
                 'district' => 'Kenjeran',
                 'village' => 'Tanah Kali Kedinding',
@@ -307,7 +307,7 @@ class DemoSeeder extends Seeder
                 'categories' => $allCategoryCodes,
             ],
             [
-                'email' => 'recovery-tandes@sirkel.test',
+                'email' => 'recovery-tandes@sirkel.awicode.com',
                 'name' => 'Sirkular Material Tandes',
                 'district' => 'Tandes',
                 'village' => 'Balongsari',
@@ -318,7 +318,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($mobile, $power, $smallHousehold, $largeHousehold, $office, $audioVideo, $lightingTools, $unknown))),
             ],
             [
-                'email' => 'battery-gubeng@sirkel.test',
+                'email' => 'battery-gubeng@sirkel.awicode.com',
                 'name' => 'Safe Battery Gubeng',
                 'district' => 'Gubeng',
                 'village' => 'Mojo',
@@ -329,7 +329,7 @@ class DemoSeeder extends Seeder
                 'categories' => array_values(array_unique(array_merge($batteryRisk, ['other-accessories-power', 'uncategorized-electronics']))),
             ],
             [
-                'email' => 'collection-lakarsantri@sirkel.test',
+                'email' => 'collection-lakarsantri@sirkel.awicode.com',
                 'name' => 'Pos Elektronik Lakarsantri',
                 'district' => 'Lakarsantri',
                 'village' => 'Lidah Wetan',
@@ -340,7 +340,7 @@ class DemoSeeder extends Seeder
                 'categories' => $allCategoryCodes,
             ],
             [
-                'email' => 'collection@sirkel.test',
+                'email' => 'collection@sirkel.awicode.com',
                 'name' => 'Pusat Koleksi Rungkut',
                 'district' => 'Rungkut',
                 'village' => 'Kalirungkut',
@@ -412,7 +412,7 @@ class DemoSeeder extends Seeder
         $smartphone = DeviceCategory::where('code', 'smartphone')->firstOrFail();
         $blender = DeviceCategory::where('code', 'blender')->firstOrFail();
         $battery = DeviceCategory::where('code', 'battery')->firstOrFail();
-        $repairPartner = $partners['repair@sirkel.test'];
+        $repairPartner = $partners['repair@sirkel.awicode.com'];
 
         $asset1 = Asset::updateOrCreate(
             ['passport_code' => 'SRK-I-DEMO01'],

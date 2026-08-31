@@ -1,10 +1,62 @@
 # SIRKEL
 
-LINK WEBSITE : https://sirkel.awicode.com/
-
 **SIRKEL — Sistem Sirkular Elektronik Kota** adalah platform web untuk membantu warga mengelola elektronik yang tidak lagi digunakan melalui jalur **perbaikan, pemulihan material, penggunaan kembali, dan donasi** dengan proses yang dapat ditelusuri dari pengajuan sampai hasil akhir.
 
 Platform ini dikembangkan dengan fokus implementasi di **Surabaya**, dengan studi dan demo yang banyak menggunakan area **Gunung Anyar**. SIRKEL tidak memposisikan diri sebagai marketplace servis biasa; sistem berfungsi sebagai orkestrator alur circular e-waste yang menghubungkan warga, mitra penanganan, dan admin dalam satu chain-of-custody yang terdokumentasi.
+
+
+## Akun Demo / Pengujian
+
+`DatabaseSeeder` menjalankan `DemoSeeder` untuk menyediakan akun dan data awal yang dapat dipakai saat **pengujian lokal maupun deployment demo lomba**. Seluruh akun demo di bawah menggunakan password yang sama:
+
+```text
+password123
+```
+
+Nomor WhatsApp/nomor HP yang dibuat oleh seeder diseragamkan ke `6289650484363` agar komunikasi demo tidak mengarah ke nomor acak.
+
+### Admin dan Warga
+
+| Role | Nama | Email | Password |
+| --- | --- | --- | --- |
+| Admin | Admin SIRKEL | `admin@sirkel.awicode.com` | `password123` |
+| Warga | Warga Demo | `warga@sirkel.awicode.com` | `password123` |
+
+### Mitra
+
+| Nama Mitra | Kapabilitas Utama | Email | Password |
+| --- | --- | --- | --- |
+| Sirkular Service Gunung Anyar | Collection, Pickup, Repair | `repair@sirkel.awicode.com` | `password123` |
+| Tekno Repair Rungkut | Collection, Pickup, Repair | `repair-rungkut@sirkel.awicode.com` | `password123` |
+| Elektronik Sehat Sukolilo | Pickup, Repair | `repair-sukolilo@sirkel.awicode.com` | `password123` |
+| Surabaya Device Care | Collection, Repair | `devicecare@sirkel.awicode.com` | `password123` |
+| Surabaya Home Appliance Care | Collection, Pickup, Repair, Recovery | `homecare@sirkel.awicode.com` | `password123` |
+| Audio Visual Service Gubeng | Collection, Pickup, Repair | `avrepair@sirkel.awicode.com` | `password123` |
+| Surabaya Cooling Service | Collection, Pickup, Repair, Recovery, Special Handling | `coolingcare@sirkel.awicode.com` | `password123` |
+| Reuse Hub Surabaya | Collection, Pickup, Reuse/Donation | `donation@sirkel.awicode.com` | `password123` |
+| Berbagi Elektronik Rungkut | Collection, Pickup, Reuse/Donation | `donation-rungkut@sirkel.awicode.com` | `password123` |
+| Second Life Surabaya | Collection, Reuse/Donation | `secondlife@sirkel.awicode.com` | `password123` |
+| Mitra Recovery Surabaya | Collection, Pickup, Recovery, Special Handling | `recovery@sirkel.awicode.com` | `password123` |
+| Eco Material Rungkut | Collection, Pickup, Recovery, Special Handling | `recovery-rungkut@sirkel.awicode.com` | `password123` |
+| Recovery Hub Margorejo | Collection, Recovery | `recovery-wonocolo@sirkel.awicode.com` | `password123` |
+| Baterai Aman Surabaya | Collection, Pickup, Special Handling | `battery@sirkel.awicode.com` | `password123` |
+| Elektronik Prima Tenggilis | Collection, Pickup, Repair | `repair-tenggilis@sirkel.awicode.com` | `password123` |
+| Mulyorejo Tech Repair | Pickup, Repair | `repair-mulyorejo@sirkel.awicode.com` | `password123` |
+| Tandes Elektronik Care | Collection, Repair | `repair-tandes@sirkel.awicode.com` | `password123` |
+| Wiyung Appliance Service | Collection, Pickup, Repair | `homecare-wiyung@sirkel.awicode.com` | `password123` |
+| Gunung Anyar Reuse Point | Collection, Pickup, Reuse/Donation | `donation-gununganyar@sirkel.awicode.com` | `password123` |
+| Rumah Guna Ulang Gayungan | Collection, Reuse/Donation | `donation-gayungan@sirkel.awicode.com` | `password123` |
+| Recovery Material Kenjeran | Collection, Pickup, Recovery, Special Handling | `recovery-kenjeran@sirkel.awicode.com` | `password123` |
+| Sirkular Material Tandes | Collection, Recovery | `recovery-tandes@sirkel.awicode.com` | `password123` |
+| Safe Battery Gubeng | Collection, Pickup, Special Handling | `battery-gubeng@sirkel.awicode.com` | `password123` |
+| Pos Elektronik Lakarsantri | Collection, Pickup | `collection-lakarsantri@sirkel.awicode.com` | `password123` |
+| Pusat Koleksi Rungkut | Collection, Pickup | `collection@sirkel.awicode.com` | `password123` |
+
+Selain akun di atas, `DemoSeeder` juga membuat asset, assessment, event, handover request, dan offer contoh agar alur utama dapat langsung diuji setelah `migrate:fresh --seed`.
+
+> Akun di atas ditujukan untuk development dan demo lomba. Jika deployment dibuka untuk penggunaan publik nyata, ganti password akun yang tetap dipertahankan atau hapus data demo yang tidak diperlukan.
+
+---
 
 ## Ringkasan
 
@@ -47,6 +99,7 @@ Warga dapat:
 - login menggunakan email/password atau Google OAuth;
 - melengkapi profil dan data wilayah;
 - memilih tampilan Light / Dark / System;
+- memasang **SIRKEL sebagai aplikasi (PWA)** dari browser yang mendukung, lengkap dengan icon aplikasi dan mode standalone;
 - mendaftarkan elektronik secara manual;
 - menggunakan kamera atau galeri untuk foto barang;
 - memakai **Pengenalan Barang berbasis AI** secara opsional;
@@ -331,6 +384,7 @@ Master wilayah Surabaya tersedia di database agar dropdown kecamatan/kelurahan t
 - JavaScript
 - Axios
 - Leaflet + OpenStreetMap
+- Web App Manifest + Service Worker (PWA)
 
 ### Integrasi Opsional
 
@@ -589,23 +643,6 @@ SIRKEL_DEFAULT_PICKUP_RADIUS_KM=10
 
 ---
 
-# Akun Demo
-
-Seeder menyediakan akun untuk pengujian lokal.
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@sirkel.test` | `password123` |
-| Warga | `warga@sirkel.test` | `password123` |
-| Mitra Repair | `repair@sirkel.test` | `password123` |
-| Mitra Recovery | `recovery@sirkel.test` | `password123` |
-| Mitra Donation | `donation@sirkel.test` | `password123` |
-
-`DemoSeeder` juga membuat beberapa mitra tambahan di berbagai wilayah Surabaya untuk menguji matching, radius, repair, recovery, donation/reuse, special handling, collection, dan pickup.
-
-> Akun demo hanya untuk development/demo. Jangan gunakan password tersebut pada akun production.
-
----
 
 # Automated Test
 
