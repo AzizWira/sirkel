@@ -75,8 +75,8 @@
 ><label>Jumlah barang *</label><input id="asset-quantity" class="input" type="number" min="2" max="999" name="quantity" value="{{ old('quantity',$showQuantity?2:1) }}" required><small>Satu kelompok wajib berisi barang dengan kategori dan kondisi yang sama.</small></div>
 <div class="field"><label>Merek</label><input class="input" name="brand" value="{{ old('brand') }}" placeholder="Opsional"></div>
 <div class="field"><label>Model</label><input class="input" name="model_name" value="{{ old('model_name') }}" placeholder="Opsional"></div>
-<div class="field"><label>Perkiraan berat (kg)</label><input class="input" type="number" step="0.001" min="0" name="estimated_weight_kg" value="{{ old('estimated_weight_kg') }}"><small>Berat akhir akan dicatat oleh mitra.</small></div>
-<div class="field"><label>Sudah tidak digunakan sejak</label><input class="input" type="date" name="dormant_since" value="{{ old('dormant_since') }}"></div>
+<div class="field"><label>Perkiraan berat (kg) <span class="muted">(Opsional)</span></label><input class="input" type="number" step="0.001" min="0" max="9999" name="estimated_weight_kg" value="{{ old('estimated_weight_kg') }}"><small>Berat akhir akan dicatat oleh mitra.</small></div>
+<div class="field"><label>Sudah tidak digunakan sejak <span class="muted">(Opsional)</span></label><input class="input" type="date" name="dormant_since" value="{{ old('dormant_since') }}" max="{{ now()->toDateString() }}"></div>
 <div class="field"><label>Kecamatan asal *</label><select id="asset-district" class="select" name="origin_district" required><option value="">Pilih kecamatan</option>
 @foreach($districts as $d)
 <option value="{{ $d->name }}" {{ old('origin_district',auth()->user()->district)===$d->name?'selected':'' }}>{{ $d->name }}</option>

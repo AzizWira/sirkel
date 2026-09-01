@@ -475,6 +475,10 @@ async function addAssetPhotoFiles(state, rawFiles) {
 
 function setAssetMediaModalOpen(modal, open) {
     setSirkelModalVisibility(modal, open);
+    document.body.classList.toggle(
+            'asset-modal-open',
+            Boolean(document.querySelector('.asset-media-modal.show'))
+    );
 }
 
 function closeAssetPhotoScopeNotice() {
@@ -1019,7 +1023,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-window.addEventListener('beforeunload', closeAssetCamera);
+window.addEventListener('beforeunload', () => { closeAssetCamera(); stopBulkCameraStream(); });
 
 
 function appendSafeInlineMarkdown(parent, text) {
@@ -1328,6 +1332,32 @@ window.bindRegionSelect = (districtId, villageId, selectedVillage = '') => {
     load();
 };
 
+async function applyResolvedRegion(districtId, villageId, districtName, villageName) {
+    const district = document.getElementById(districtId);
+    const village = document.getElementById(villageId);
+    if (!district || !village || !districtName || !villageName) return false;
+    if (![...district.options].some(option => option.value === districtName)) return false;
+
+    district.value = districtName;
+    window.refreshSirkelSelect?.(district);
+    district.dispatchEvent(new Event('change', {bubbles: true}));
+
+    try {
+        const names = await getVillagesForDistrict(districtName);
+        village.replaceChildren(new Option('Pilih kelurahan', ''));
+        names.forEach(name => village.add(new Option(name, name)));
+        village.disabled = false;
+        village.setAttribute('aria-busy', 'false');
+        if (!names.includes(villageName)) return false;
+        village.value = villageName;
+        window.refreshSirkelSelect?.(village);
+        village.dispatchEvent(new Event('change', {bubbles: true}));
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
 
 window.bindHandoverMethodForm = (form) => {
     if (!form) return;
@@ -1339,6 +1369,7 @@ window.bindHandoverMethodForm = (form) => {
     const privacy = form.querySelector('[data-method-privacy-note]');
     const dateLabel = form.querySelector('[data-date-label]');
     const timeLabel = form.querySelector('[data-time-label]');
+    const timeFields = [...form.querySelectorAll('[data-handover-time]')];
 
     const refresh = () => {
         const method = methods.find(input => input.checked)?.value || 'pickup';
@@ -1357,6 +1388,7 @@ window.bindHandoverMethodForm = (form) => {
             : 'Untuk antar langsung, Anda datang ke lokasi mitra. SIRKEL hanya menggunakan titik ini untuk perkiraan jarak rekomendasi.';
         if (dateLabel) dateLabel.textContent = pickup ? 'Tanggal penjemputan yang diinginkan *' : 'Rencana tanggal mengantar *';
         if (timeLabel) timeLabel.textContent = pickup ? 'Rentang waktu penjemputan *' : 'Perkiraan waktu mengantar';
+        timeFields.forEach(field => { field.required = pickup; });
     };
 
     methods.forEach(input => input.addEventListener('change', refresh));
@@ -1387,8 +1419,42 @@ window.bindMapLinkPicker = (root) => {
     const resolveButton = root.querySelector('[data-resolve-map-link]');
     const status = root.querySelector('[data-map-link-status]');
     const copyButton = root.querySelector('[data-copy-map-link]');
+    const reverseUrl = root.dataset.reverseUrl || '';
+    const districtId = root.dataset.districtId || '';
+    const villageId = root.dataset.villageId || '';
+    const regionStatus = root.dataset.regionStatusId ? document.getElementById(root.dataset.regionStatusId) : null;
+    const districtSelect = districtId ? document.getElementById(districtId) : null;
+    const villageSelect = villageId ? document.getElementById(villageId) : null;
+    const form = root.closest('form');
+    const regionDependentSubmit = [...(form?.querySelectorAll('[data-region-dependent-submit]') || [])];
     const tabs = [...root.querySelectorAll('[data-location-source], [data-location-mode]')];
     const panels = [...root.querySelectorAll('[data-location-panel]')];
+    let regionLookupPending = false;
+
+    const syncRegionSubmitGuard = () => {
+        regionDependentSubmit.forEach(button => {
+            button.disabled = regionLookupPending;
+            button.setAttribute('aria-disabled', regionLookupPending ? 'true' : 'false');
+        });
+        root.dataset.regionLookupState = regionLookupPending ? 'pending' : 'idle';
+        if (regionStatus) regionStatus.setAttribute('aria-busy', regionLookupPending ? 'true' : 'false');
+    };
+
+    const setRegionLookupPending = pending => {
+        regionLookupPending = Boolean(pending);
+        syncRegionSubmitGuard();
+    };
+
+    const clearRegionForNewPoint = () => {
+        if (districtSelect) {
+            districtSelect.value = '';
+            window.refreshSirkelSelect?.(districtSelect);
+            districtSelect.dispatchEvent(new Event('change', {bubbles: true}));
+        } else if (villageSelect) {
+            villageSelect.value = '';
+            window.refreshSirkelSelect?.(villageSelect);
+        }
+    };
 
     const syncGeneratedLink = () => {
         const lat = Number(latInput?.value);
@@ -1402,6 +1468,42 @@ window.bindMapLinkPicker = (root) => {
     const updateLabel = point => {
         const label = labelId ? document.getElementById(labelId) : null;
         if (label && point) label.textContent = `Titik dipilih · ${Number(point.lat).toFixed(6)}, ${Number(point.lng).toFixed(6)}`;
+    };
+
+    let reverseTimer = null;
+    let reverseSequence = 0;
+    const scheduleRegionLookup = point => {
+        if (!reverseUrl || !districtId || !villageId || !point) return;
+        window.clearTimeout(reverseTimer);
+        const sequence = ++reverseSequence;
+        clearRegionForNewPoint();
+        setRegionLookupPending(true);
+        if (regionStatus) regionStatus.textContent = 'Mendeteksi Kecamatan dan Kelurahan dari titik lokasi...';
+        reverseTimer = window.setTimeout(async () => {
+            try {
+                const {data} = await axios.post(reverseUrl, {
+                    latitude: Number(point.lat),
+                    longitude: Number(point.lng),
+                });
+                if (sequence !== reverseSequence) return;
+                if (!data?.matched) {
+                    if (regionStatus) regionStatus.textContent = data?.message || 'Wilayah belum dapat dikenali otomatis. Pilih Kecamatan dan Kelurahan secara manual.';
+                    setRegionLookupPending(false);
+                    return;
+                }
+                const applied = await applyResolvedRegion(districtId, villageId, data.district, data.village);
+                if (sequence !== reverseSequence) return;
+                if (regionStatus) regionStatus.textContent = applied
+                    ? `${data.village}, ${data.district} terisi otomatis. Anda tetap dapat mengubahnya secara manual.`
+                    : 'Wilayah ditemukan, tetapi belum cocok dengan daftar lokal. Pilih Kecamatan dan Kelurahan secara manual.';
+                setRegionLookupPending(false);
+            } catch (error) {
+                if (sequence === reverseSequence) {
+                    if (regionStatus) regionStatus.textContent = 'Wilayah belum dapat diisi otomatis. Pilih Kecamatan dan Kelurahan secara manual.';
+                    setRegionLookupPending(false);
+                }
+            }
+        }, 350);
     };
 
     const selectSource = source => {
@@ -1432,7 +1534,10 @@ window.bindMapLinkPicker = (root) => {
 
     mapEl?.addEventListener('sirkel:map-point-changed', event => {
         syncGeneratedLink();
-        if (event.detail) updateLabel(event.detail);
+        if (event.detail) {
+            updateLabel(event.detail);
+            scheduleRegionLookup(event.detail);
+        }
     });
 
     resolveButton?.addEventListener('click', async () => {
@@ -1498,6 +1603,7 @@ window.bindMapLinkPicker = (root) => {
     });
 
     syncGeneratedLink();
+    syncRegionSubmitGuard();
 };
 
 
@@ -2072,7 +2178,6 @@ function bindBulkQuestionnaire(form) {
         if (finish) finish.hidden = current < questions.length - 1;
         if (progress) progress.textContent = `${current + 1} dari ${questions.length}`;
         if (bar) bar.style.width = `${((current + 1) / questions.length) * 100}%`;
-        questions[current]?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
     };
 
     const autosave = async () => {
@@ -2105,10 +2210,40 @@ function bindBulkQuestionnaire(form) {
         return Boolean(question.querySelector('input:checked'));
     };
 
+    const clearQuestionError = question => {
+        if (!question) return;
+        question.classList.remove('has-error');
+        question.querySelector('[data-bulk-question-error]')?.remove();
+    };
+
+    const showQuestionError = question => {
+        if (!question) return;
+        clearQuestionError(question);
+        question.classList.add('has-error');
+        const message = document.createElement('div');
+        message.className = 'validation-error bulk-question-error';
+        message.dataset.bulkQuestionError = '1';
+        message.textContent = 'Jawab pertanyaan ini sebelum melanjutkan.';
+        const target = question.querySelector('.bulk-matrix, .choice-list, textarea') || question;
+        target.insertAdjacentElement('afterend', message);
+        if (saveState) saveState.textContent = 'Ada pertanyaan wajib yang belum dijawab.';
+        window.requestAnimationFrame(() => {
+            question.scrollIntoView({behavior: 'smooth', block: 'center'});
+            const focusable = question.querySelector('input:not([disabled]), textarea:not([disabled])');
+            window.setTimeout(() => focusable?.focus({preventScroll: true}), 260);
+        });
+    };
+
+    const revealFirstIncomplete = () => {
+        const index = questions.findIndex(question => !questionComplete(question));
+        if (index < 0) return false;
+        show(index);
+        showQuestionError(questions[index]);
+        return true;
+    };
+
     form.querySelectorAll('input[name^="answers["], textarea[name^="answers["]').forEach(field => {
         field.addEventListener('change', () => {
-            // Pada pilihan multi, “tidak ada” dan “tidak tahu” bersifat eksklusif
-            // agar payload tidak baru ditolak ketika user menekan tombol selesai.
             if (field.type === 'checkbox' && field.checked) {
                 const name = field.getAttribute('name');
                 const peers = name ? [...form.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(name)}"]`)] : [];
@@ -2119,27 +2254,305 @@ function bindBulkQuestionnaire(form) {
                     peers.forEach(peer => { if (exclusive.includes(peer.value)) peer.checked = false; });
                 }
             }
+            const question = field.closest('[data-bulk-question]');
+            if (questionComplete(question)) clearQuestionError(question);
             scheduleSave();
         });
-        if (field.tagName === 'TEXTAREA') field.addEventListener('input', scheduleSave);
+        if (field.tagName === 'TEXTAREA') field.addEventListener('input', () => {
+            const question = field.closest('[data-bulk-question]');
+            if (questionComplete(question)) clearQuestionError(question);
+            scheduleSave();
+        });
     });
     prev?.addEventListener('click', () => show(current - 1));
     next?.addEventListener('click', () => {
         if (!questionComplete(questions[current])) {
-            if (saveState) saveState.textContent = 'Jawab pertanyaan ini sebelum melanjutkan.';
-            questions[current]?.querySelector('input, textarea')?.focus({preventScroll: true});
+            showQuestionError(questions[current]);
             return;
         }
+        clearQuestionError(questions[current]);
         scheduleSave();
         show(current + 1);
+        questions[current]?.scrollIntoView({behavior: 'smooth', block: 'center'});
     });
+    form.addEventListener('submit', event => {
+        if (event.submitter?.hasAttribute('formnovalidate')) return;
+        if (revealFirstIncomplete()) event.preventDefault();
+    }, true);
     show(0);
 }
-
 window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-cart-process-form]').forEach(bindSirkelCartSelection);
     document.querySelectorAll('[data-intake-autosave-form]').forEach(bindIntakeAutosave);
     document.querySelectorAll('[data-bulk-questionnaire-form]').forEach(bindBulkQuestionnaire);
+});
+
+let activeBulkCameraState = null;
+let activeBulkCameraStream = null;
+
+function stopBulkCameraStream() {
+    activeBulkCameraStream?.getTracks?.().forEach(track => track.stop());
+    activeBulkCameraStream = null;
+    const video = document.querySelector('[data-bulk-camera-video]');
+    if (video) video.srcObject = null;
+}
+
+function setBulkCameraOpen(open) {
+    const modal = document.querySelector('[data-bulk-camera-modal]');
+    if (!modal) return;
+    if (!open) stopBulkCameraStream();
+    setAssetMediaModalOpen(modal, open);
+    if (!open) activeBulkCameraState = null;
+}
+
+function bindBulkPhotoPicker(picker) {
+    if (!picker || picker.dataset.bulkPhotoBound === '1') return;
+    picker.dataset.bulkPhotoBound = '1';
+
+    const form = picker.closest('form');
+    const preview = picker.querySelector('[data-bulk-photo-preview]');
+    const inputHost = picker.querySelector('[data-bulk-photo-input-host]');
+    const countLabel = picker.querySelector('[data-bulk-photo-count]');
+    const status = picker.querySelector('[data-bulk-photo-status]');
+    const galleryButton = picker.querySelector('[data-bulk-photo-gallery]');
+    const cameraButton = picker.querySelector('[data-bulk-photo-camera]');
+    const maxFiles = Math.max(1, Number(picker.dataset.maxFiles || 3));
+    const maxSizeMb = Math.max(1, Number(picker.dataset.maxSizeMb || 5));
+    const maxSize = maxSizeMb * 1024 * 1024;
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const state = {picker, form, preview, inputHost, galleryButton, cameraButton, items: []};
+
+    const setStatus = (message, tone = '') => {
+        if (!status) return;
+        status.textContent = message;
+        status.dataset.tone = tone;
+    };
+
+    const sameFile = (a, b) => a?.name === b?.name && a?.size === b?.size && a?.lastModified === b?.lastModified;
+
+    const validateFile = file => {
+        if (!file) return 'Foto tidak dapat dibaca.';
+        if (!allowedTypes.has(file.type)) return 'Gunakan foto JPG, PNG, atau WebP.';
+        if (file.size > maxSize) return `Ukuran ${file.name || 'foto'} melebihi ${maxSizeMb} MB.`;
+        if (state.items.some(item => sameFile(item.file, file))) return 'Foto tersebut sudah dipilih.';
+        if (state.items.length >= maxFiles) return `Maksimal ${maxFiles} foto untuk satu sesi Bulk AI.`;
+        return '';
+    };
+
+    const createNativeInput = capture => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'photos[]';
+        input.accept = capture ? 'image/*' : 'image/jpeg,image/png,image/webp';
+        if (capture) input.setAttribute('capture', 'environment');
+        input.className = 'bulk-photo-input-native';
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        input.dataset.bulkPhotoNativeInput = capture ? 'camera' : 'gallery';
+        inputHost?.appendChild(input);
+        return input;
+    };
+
+    const render = () => {
+        if (!preview) return;
+        preview.replaceChildren();
+        state.items.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'bulk-photo-preview-card';
+            const image = document.createElement('img');
+            const url = URL.createObjectURL(item.file);
+            image.src = url;
+            image.alt = `Preview foto Bulk ${index + 1}`;
+            image.onload = () => URL.revokeObjectURL(url);
+            const badge = document.createElement('span');
+            badge.className = 'asset-photo-index';
+            badge.textContent = index === 0 ? 'Utama' : String(index + 1);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'asset-photo-remove';
+            remove.setAttribute('aria-label', `Hapus foto ${index + 1}`);
+            remove.textContent = '×';
+            const meta = document.createElement('div');
+            meta.className = 'bulk-photo-preview-meta';
+            const name = document.createElement('strong');
+            name.textContent = item.file.name || `Foto ${index + 1}`;
+            const actions = document.createElement('div');
+            actions.className = 'cluster';
+            const replace = document.createElement('button');
+            replace.type = 'button';
+            replace.className = 'btn btn-sm';
+            replace.textContent = 'Ganti';
+            replace.addEventListener('click', () => {
+                if (item.input) item.input.remove();
+                state.items.splice(index, 1);
+                render();
+                openGallery();
+            });
+            const removeText = document.createElement('button');
+            removeText.type = 'button';
+            removeText.className = 'btn btn-sm danger';
+            removeText.textContent = 'Hapus';
+            const removeItem = () => {
+                if (item.input) item.input.remove();
+                state.items.splice(index, 1);
+                render();
+            };
+            remove.addEventListener('click', removeItem);
+            removeText.addEventListener('click', removeItem);
+            actions.append(replace, removeText);
+            meta.append(name, actions);
+            card.append(image, badge, remove, meta);
+            preview.appendChild(card);
+        });
+        if (countLabel) countLabel.textContent = `${state.items.length}/${maxFiles} foto`;
+        const full = state.items.length >= maxFiles;
+        if (galleryButton) galleryButton.disabled = full;
+        if (cameraButton) cameraButton.disabled = full;
+        setStatus(state.items.length
+            ? `${state.items.length} foto dipilih.${full ? ' Batas maksimal tercapai.' : ' Anda masih dapat menambah foto.'}`
+            : 'Tambahkan minimal 1 foto.', state.items.length ? 'success' : '');
+    };
+
+    const acceptNativeInput = input => {
+        const file = input.files?.[0];
+        const problem = validateFile(file);
+        if (problem) {
+            input.remove();
+            setStatus(problem, 'warning');
+            return;
+        }
+        state.items.push({file, input, source: input.dataset.bulkPhotoNativeInput});
+        render();
+    };
+
+    const openGallery = () => {
+        if (state.items.length >= maxFiles) return;
+        const input = createNativeInput(false);
+        input.addEventListener('change', () => acceptNativeInput(input), {once: true});
+        input.click();
+    };
+
+    const openNativeCamera = () => {
+        if (state.items.length >= maxFiles) return;
+        const input = createNativeInput(true);
+        input.addEventListener('change', () => acceptNativeInput(input), {once: true});
+        input.click();
+    };
+
+    state.addCapturedFile = file => {
+        const problem = validateFile(file);
+        if (problem) {
+            setStatus(problem, 'warning');
+            return false;
+        }
+        state.items.push({file, input: null, source: 'browser-camera'});
+        render();
+        return true;
+    };
+    state.openNativeCamera = openNativeCamera;
+
+    galleryButton?.addEventListener('click', openGallery);
+    cameraButton?.addEventListener('click', async () => {
+        if (state.items.length >= maxFiles) return;
+        const modal = document.querySelector('[data-bulk-camera-modal]');
+        const video = modal?.querySelector('[data-bulk-camera-video]');
+        const cameraState = modal?.querySelector('[data-bulk-camera-state]');
+        const captureButton = modal?.querySelector('[data-bulk-camera-capture]');
+        if (!modal || !video) {
+            openNativeCamera();
+            return;
+        }
+        activeBulkCameraState = state;
+        setBulkCameraOpen(true);
+        if (captureButton) captureButton.disabled = true;
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+            if (cameraState) cameraState.textContent = 'Kamera langsung di browser tidak tersedia. Gunakan “Buka Kamera Ponsel”.';
+            return;
+        }
+        if (cameraState) cameraState.textContent = 'Meminta izin kamera...';
+        try {
+            stopBulkCameraStream();
+            activeBulkCameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+            video.srcObject = activeBulkCameraStream;
+            await video.play();
+            if (captureButton) captureButton.disabled = !(video.videoWidth && video.videoHeight);
+            if (cameraState) cameraState.textContent = 'Kamera siap. Arahkan ke barang lalu ambil foto.';
+            video.addEventListener('loadedmetadata', () => {
+                if (captureButton) captureButton.disabled = false;
+                if (cameraState) cameraState.textContent = 'Kamera siap. Arahkan ke barang lalu ambil foto.';
+            }, {once:true});
+        } catch (error) {
+            stopBulkCameraStream();
+            if (captureButton) captureButton.disabled = true;
+            if (cameraState) cameraState.textContent = 'Izin/kamera browser tidak dapat digunakan. Tekan “Buka Kamera Ponsel” sebagai fallback.';
+        }
+    });
+
+    form?.addEventListener('formdata', event => {
+        state.items.filter(item => !item.input).forEach(item => event.formData.append('photos[]', item.file, item.file.name));
+    });
+
+    form?.addEventListener('submit', event => {
+        if (state.items.length < 1) {
+            event.preventDefault();
+            setStatus('Tambahkan minimal 1 foto sebelum memulai Bulk AI.', 'warning');
+            picker.scrollIntoView({behavior:'smooth', block:'center'});
+            galleryButton?.focus();
+            return;
+        }
+        const progress = form.querySelector('[data-bulk-ai-progress]');
+        const title = form.querySelector('[data-bulk-ai-progress-title]');
+        const copy = form.querySelector('[data-bulk-ai-progress-copy]');
+        if (progress) progress.hidden = false;
+        form.querySelector('[data-bulk-ai-start-button]')?.classList.add('is-loading');
+        window.setTimeout(() => {
+            if (title) title.textContent = 'Mengoptimalkan salinan foto...';
+            if (copy) copy.textContent = 'Foto asli tetap disimpan. SIRKEL menyiapkan salinan lebih ringan agar analisis lebih cepat.';
+        }, 700);
+        window.setTimeout(() => {
+            if (title) title.textContent = 'AI sedang mengenali dan mengelompokkan barang...';
+            if (copy) copy.textContent = 'Proses dapat membutuhkan beberapa saat. Jangan menutup halaman ini.';
+        }, 1800);
+    }, {capture:true});
+
+    render();
+}
+
+function bindBulkCameraModal() {
+    const modal = document.querySelector('[data-bulk-camera-modal]');
+    if (!modal || modal.dataset.bulkCameraBound === '1') return;
+    modal.dataset.bulkCameraBound = '1';
+    modal.querySelectorAll('[data-bulk-camera-close]').forEach(button => button.addEventListener('click', () => setBulkCameraOpen(false)));
+    modal.addEventListener('click', event => { if (event.target === modal) setBulkCameraOpen(false); });
+    modal.querySelector('[data-bulk-camera-native]')?.addEventListener('click', () => {
+        const state = activeBulkCameraState;
+        setBulkCameraOpen(false);
+        state?.openNativeCamera?.();
+    });
+    modal.querySelector('[data-bulk-camera-capture]')?.addEventListener('click', async () => {
+        const state = activeBulkCameraState;
+        const video = modal.querySelector('[data-bulk-camera-video]');
+        const cameraState = modal.querySelector('[data-bulk-camera-state]');
+        if (!state || !video?.videoWidth || !video?.videoHeight) {
+            if (cameraState) cameraState.textContent = 'Gambar kamera belum siap. Tunggu sebentar atau gunakan kamera ponsel.';
+            return;
+        }
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 2000 / Math.max(video.videoWidth, video.videoHeight));
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+        if (!blob) return;
+        const file = new File([blob], `bulk-kamera-${Date.now()}.jpg`, {type:'image/jpeg', lastModified:Date.now()});
+        if (state.addCapturedFile(file)) setBulkCameraOpen(false);
+    });
+}
+window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-bulk-photo-picker]').forEach(bindBulkPhotoPicker);
+    bindBulkCameraModal();
 });
 
 function bindCameraFilePicker(picker) {

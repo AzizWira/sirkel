@@ -96,17 +96,17 @@ class AiService
                 if (! $path || ! is_file($path)) {
                     continue;
                 }
-                $bytes = file_get_contents($path);
-                if ($bytes === false || $bytes === '') {
-                    continue;
-                }
                 $mime = $photo->getMimeType() ?: 'image/jpeg';
+                $prepared = $this->prepareImageForAi($path, $mime);
+                if (! $prepared) continue;
                 $content[] = [
                     'type' => 'input_image',
-                    'image_url' => 'data:'.$mime.';base64,'.base64_encode($bytes),
+                    'image_url' => 'data:'.$prepared['mime'].';base64,'.base64_encode($prepared['bytes']),
                     'detail' => SystemSetting::getValue('ai.image_detail', config('sirkel.ai.image_detail')),
                 ];
-                $imageHashes[] = hash('sha256', $bytes);
+                // Cache identity tetap memakai hash foto asli. Optimasi hanya berlaku
+                // pada payload AI dan tidak pernah mengganti berkas yang disimpan warga.
+                $imageHashes[] = $prepared['original_hash'];
             } catch (Throwable) {
                 // Satu foto yang tidak terbaca tidak boleh menggagalkan foto lain.
             }
@@ -354,15 +354,15 @@ class AiService
             try {
                 $path = $photo?->getRealPath();
                 if (! $path || ! is_file($path)) continue;
-                $bytes = file_get_contents($path);
-                if ($bytes === false || $bytes === '') continue;
                 $mime = $photo->getMimeType() ?: 'image/jpeg';
+                $prepared = $this->prepareImageForAi($path, $mime);
+                if (! $prepared) continue;
                 $content[] = [
                     'type' => 'input_image',
-                    'image_url' => 'data:'.$mime.';base64,'.base64_encode($bytes),
+                    'image_url' => 'data:'.$prepared['mime'].';base64,'.base64_encode($prepared['bytes']),
                     'detail' => SystemSetting::getValue('ai.image_detail', config('sirkel.ai.image_detail')),
                 ];
-                $imageHashes[] = hash('sha256', $bytes);
+                $imageHashes[] = $prepared['original_hash'];
             } catch (Throwable) {}
         }
         if ($imageHashes === []) {
@@ -778,9 +778,11 @@ class AiService
         $content = [['type'=>'input_text','text'=>$prompt."\nInput pengguna: ".($freeText ?: $asset->description ?: $asset->custom_item_name ?: 'Tidak ada')]];
         if ($primary && Storage::disk('public')->exists($primary->path)) {
             try {
-                $bytes = Storage::disk('public')->get($primary->path);
                 $mime = Storage::disk('public')->mimeType($primary->path) ?: 'image/jpeg';
-                $content[] = ['type'=>'input_image','image_url'=>'data:'.$mime.';base64,'.base64_encode($bytes),'detail'=>SystemSetting::getValue('ai.image_detail', config('sirkel.ai.image_detail'))];
+                $prepared = $this->prepareImageForAi(Storage::disk('public')->path($primary->path), $mime);
+                if ($prepared) {
+                    $content[] = ['type'=>'input_image','image_url'=>'data:'.$prepared['mime'].';base64,'.base64_encode($prepared['bytes']),'detail'=>SystemSetting::getValue('ai.image_detail', config('sirkel.ai.image_detail'))];
+                }
             } catch (Throwable) {}
         }
 
@@ -1159,6 +1161,82 @@ class AiService
         $p = $prices[$model] ?? $prices['gpt-5.6-luna'];
         $normal = max(0,$input-$cached);
         return (($normal*$p[0])+($cached*$p[1])+($output*$p[2]))/1_000_000;
+    }
+
+    /**
+     * Build a smaller in-memory AI payload while leaving the uploaded original
+     * untouched for SIRKEL storage and audit. Hosts without GD safely fall back
+     * to the original bytes.
+     *
+     * @return array{bytes:string,mime:string,original_hash:string}|null
+     */
+    private function prepareImageForAi(string $path, string $mime): ?array
+    {
+        $original = @file_get_contents($path);
+        if ($original === false || $original === '') return null;
+
+        $fallback = [
+            'bytes' => $original,
+            'mime' => $mime,
+            'original_hash' => hash('sha256', $original),
+        ];
+        if (! function_exists('imagecreatefromstring') || ! function_exists('imagejpeg')) {
+            return $fallback;
+        }
+
+        $info = @getimagesizefromstring($original);
+        if (! is_array($info) || empty($info[0]) || empty($info[1])) return $fallback;
+
+        $maxDimension = max(640, (int) config('sirkel.ai.image_max_dimension', 1600));
+        $minBytes = max(0, (int) config('sirkel.ai.image_optimize_min_bytes', 350000));
+        $largest = max((int) $info[0], (int) $info[1]);
+        if ($largest <= $maxDimension && strlen($original) <= $minBytes) return $fallback;
+
+        $source = @imagecreatefromstring($original);
+        if (! $source) return $fallback;
+
+        $scale = min(1, $maxDimension / $largest);
+        $width = max(1, (int) round((int) $info[0] * $scale));
+        $height = max(1, (int) round((int) $info[1] * $scale));
+        $target = @imagecreatetruecolor($width, $height);
+        if (! $target) {
+            imagedestroy($source);
+            return $fallback;
+        }
+
+        $white = imagecolorallocate($target, 255, 255, 255);
+        imagefill($target, 0, 0, $white);
+        $copied = @imagecopyresampled(
+            $target,
+            $source,
+            0,
+            0,
+            0,
+            0,
+            $width,
+            $height,
+            (int) $info[0],
+            (int) $info[1]
+        );
+        imagedestroy($source);
+        if (! $copied) {
+            imagedestroy($target);
+            return $fallback;
+        }
+
+        ob_start();
+        $encoded = @imagejpeg($target, null, max(60, min(90, (int) config('sirkel.ai.image_jpeg_quality', 82))));
+        $optimized = ob_get_clean();
+        imagedestroy($target);
+
+        if (! $encoded || ! is_string($optimized) || $optimized === '') return $fallback;
+        if (strlen($optimized) >= strlen($original) && $scale >= 1) return $fallback;
+
+        return [
+            'bytes' => $optimized,
+            'mime' => 'image/jpeg',
+            'original_hash' => $fallback['original_hash'],
+        ];
     }
 
     private function available(): bool

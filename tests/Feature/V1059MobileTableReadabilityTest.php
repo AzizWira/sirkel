@@ -14,9 +14,9 @@ class V1059MobileTableReadabilityTest extends TestCase
         $this->assertStringContainsString('mobile-table mobile-table-6 asset-list-table', $view);
         $this->assertStringContainsString('class="passport-table-cell"', $view);
         $this->assertStringContainsString('class="passport-table-code"', $view);
-        $this->assertStringContainsString('.asset-list-table{min-width:760px}', $css);
-        $this->assertStringContainsString('.asset-list-table .passport-table-code{font-size:10px', $css);
-        $this->assertStringContainsString('width:82px;min-width:82px;max-width:82px', $css);
+        $this->assertStringContainsString('.asset-list-table{min-width:820px}', $css);
+        $this->assertStringContainsString('.asset-list-table .passport-table-code{font-size:12px', $css);
+        $this->assertStringContainsString('width:112px;min-width:112px;max-width:112px', $css);
     }
 
     public function test_all_multi_column_data_tables_use_horizontal_mobile_width_contract(): void

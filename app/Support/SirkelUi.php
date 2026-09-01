@@ -113,6 +113,7 @@ class SirkelUi
         'behavior' => 'Perilaku Tidak Sesuai',
         'no_update' => 'Tidak Ada Pembaruan',
         'matching_help' => 'Bantuan Pencarian Mitra',
+        'matching_assistance' => 'Butuh Bantuan SIRKEL',
         'other' => 'Lainnya',
         'user_unreachable' => 'Warga Tidak Dapat Dihubungi',
 

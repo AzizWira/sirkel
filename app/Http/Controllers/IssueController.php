@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
 use App\Models\{Asset, HandoverRequest, IssueReport, User};
-use App\Services\NotificationService;
+use App\Services\{IntakeSessionStateService, NotificationService};
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -94,6 +94,11 @@ class IssueController extends Controller
         }
 
         if ($issue->category === 'matching_help') {
+            $asset->update([
+                'status' => 'matching_assistance',
+                'handover_type' => $context['handover_type'] ?? $asset->handover_type,
+            ]);
+            app(IntakeSessionStateService::class)->reconcileForAsset($asset);
             User::query()->where('role', UserRole::ADMIN->value)->get()->each(function (User $admin) use ($issue, $asset) {
                 app(NotificationService::class)->send(
                     $admin,

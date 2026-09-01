@@ -3,14 +3,13 @@
 @section('topbar', 'Rencana Mitra')
 
 @section('content')
-    <div class="page-head">
-        <div>
+    <div class="page-head multi-partner-page-head">
+        <div class="multi-partner-page-copy">
             <span class="eyebrow">Rencana penyerahan · {{ $items->count() }} kelompok</span>
             <h2>Pilih mitra dengan sekali konfirmasi</h2>
-            <p>SIRKEL membandingkan kecocokan setiap barang. Jika satu mitra dapat menangani semuanya, Anda dapat memilihnya
-                sekaligus.</p>
+            <p>SIRKEL membandingkan kecocokan setiap barang. Jika satu mitra dapat menangani semuanya, Anda dapat memilihnya sekaligus. Barang yang belum memiliki mitra tetap dapat dikirim dan akan masuk antrean bantuan SIRKEL.</p>
         </div>
-        <a class="btn" href="{{ route('user.intake.handover.form', $session) }}">Ubah Cara Penyerahan</a>
+        <a class="btn multi-partner-change-button" href="{{ route('user.intake.handover.form', $session) }}">Ubah Cara Penyerahan</a>
     </div>
 
     @if ($commonPartners->isNotEmpty())
@@ -55,6 +54,13 @@
     <form class="stack" method="post" action="{{ route('user.intake.handover.create', $session) }}">
         @csrf
 
+        @if($assistanceCount > 0)
+            <div class="alert warning">
+                <strong>Pengajuan tetap dapat dilanjutkan.</strong><br>
+                {{ $matchedCount }} kelompok akan dikirim ke mitra yang Anda pilih dan {{ $assistanceCount }} kelompok akan berstatus <strong>Butuh Bantuan SIRKEL</strong>. Barang tersebut masuk antrean Admin untuk penentuan mitra dan perkembangannya tetap terlihat oleh Anda.
+            </div>
+        @endif
+
         <section class="stack">
             <div>
                 <span class="eyebrow">Pilihan per kelompok</span>
@@ -77,9 +83,13 @@
                     </div>
 
                     @if ($partnersByAsset[$item->asset->public_id]->isEmpty())
-                        <div class="alert warning">
-                            Belum ada mitra yang cocok untuk kelompok ini. Ubah tujuan/cara penyerahan atau proses kelompok lain
-                            terlebih dahulu.
+                        <input type="hidden" name="assist[{{ $item->asset->public_id }}]" value="1">
+                        <div class="matching-assistance-outcome">
+                            <span class="badge warning">Butuh Bantuan SIRKEL</span>
+                            <div>
+                                <strong>Belum ada mitra yang cocok untuk kelompok ini.</strong>
+                                <p class="muted mb-0">Saat seluruh pengajuan dikirim, barang ini tidak disimpan sebagai pilihan mitra kosong. SIRKEL membuat antrean bantuan khusus agar Admin dapat menentukan mitra yang sesuai.</p>
+                            </div>
                         </div>
                     @else
                         <div class="stack">
@@ -117,10 +127,6 @@
             </span>
         </label>
 
-        @if ($hasUnavailablePartner)
-            <button class="btn btn-primary" type="button" disabled>Kirim Semua Permintaan</button>
-        @else
-            <button class="btn btn-primary" type="submit">Kirim Semua Permintaan</button>
-        @endif
+        <button class="btn btn-primary" type="submit">Kirim Semua Permintaan</button>
     </form>
 @endsection

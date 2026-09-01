@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Models\{Asset, AssetCustody, HandoverRequest, IssueReport, Offer, PartnerTransfer, User};
 use App\Services\{AssetEventService, NotificationService, OfferLifecycleService, PartnerMatchingService};
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PartnerRequestController extends Controller
 {
@@ -266,9 +268,33 @@ class PartnerRequestController extends Controller
     {
         $this->can($handover);
         $profile = $this->profile(true);
-        $data = $request->validate(['proposed_time' => 'required|date|after:now']);
+        // Compatibility for older app clients; the current UI sends separate
+        // date and 30-minute clock fields.
+        if ($request->filled('proposed_time') && ! $request->filled('proposed_date')) {
+            try {
+                $legacy = Carbon::parse((string) $request->input('proposed_time'), config('app.timezone'));
+                $request->merge([
+                    'proposed_date' => $legacy->toDateString(),
+                    'proposed_clock' => $legacy->format('H:i'),
+                ]);
+            } catch (\Throwable) {
+                // Validation below returns the ordinary field error.
+            }
+        }
+        $data = $request->validate([
+            'proposed_date' => 'required|date|after_or_equal:today|before_or_equal:'.now()->endOfYear()->toDateString(),
+            'proposed_clock' => ['required', 'date_format:H:i', 'regex:/^(?:[01]\d|2[0-3]):(?:00|30)$/'],
+        ]);
+        $proposedTime = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $data['proposed_date'].' '.$data['proposed_clock'],
+            config('app.timezone')
+        );
+        if (! $proposedTime || $proposedTime->isPast()) {
+            throw ValidationException::withMessages(['proposed_clock' => 'Pilih jadwal yang belum lewat.']);
+        }
 
-        DB::transaction(function () use ($handover, $data, $profile) {
+        DB::transaction(function () use ($handover, $proposedTime, $profile) {
             $locked = HandoverRequest::whereKey($handover->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->partner_profile_id === $profile->id, 403);
             abort_if(in_array($locked->status, HandoverRequest::TERMINAL_STATUSES, true), 422, 'Penyerahan ini sudah selesai atau ditutup.');
@@ -278,10 +304,10 @@ class PartnerRequestController extends Controller
                 : 'Terima permintaan terlebih dahulu sebelum mengusulkan jadwal.');
 
             $locked->update([
-                'partner_proposed_time' => $data['proposed_time'],
+                'partner_proposed_time' => $proposedTime,
                 'schedule_status' => 'proposed',
             ]);
-            app(AssetEventService::class)->add($locked->asset, 'SCHEDULE_PROPOSED', 'Mitra mengusulkan jadwal baru', $data['proposed_time']);
+            app(AssetEventService::class)->add($locked->asset, 'SCHEDULE_PROPOSED', 'Mitra mengusulkan jadwal baru', $proposedTime->format('Y-m-d H:i'));
         });
 
         app(NotificationService::class)->send(

@@ -95,9 +95,17 @@
 
 <main>@yield('content')</main>
 <footer class="footer">
-    <div class="container split">
-        <div><strong>SIRKEL</strong> · Elektronik sirkular Surabaya</div>
-        <div>Mulai dari Gunung Anyar</div>
+    <div class="container footer-grid">
+        <div class="footer-brand">
+            <strong>SIRKEL</strong>
+            <p>Platform sirkular elektronik untuk membantu warga Surabaya mengenali, menyalurkan, dan melacak penanganan barang elektronik secara lebih bertanggung jawab.</p>
+        </div>
+        <nav class="footer-links" aria-label="Tautan footer">
+            <a href="{{ route('home') }}">Beranda</a>
+            <a href="{{ route('public.partners') }}">Mitra</a>
+            <a href="{{ route('public.education') }}">Edukasi</a>
+        </nav>
+        <div class="footer-meta">© {{ now()->year }} SIRKEL · Surabaya, Indonesia</div>
     </div>
 </footer>
 </body>

@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'email.verified.custom'])->group(function () {
     Route::get('/regions/districts', [RegionController::class, 'districts'])->name('regions.districts');
     Route::get('/regions/villages', [RegionController::class, 'villages'])->name('regions.villages');
+    Route::post('/regions/reverse', [RegionController::class, 'reverse'])->name('regions.reverse');
 });
 
 Route::middleware(['auth', 'email.verified.custom', 'profile.complete'])->group(function () {
@@ -108,7 +109,6 @@ Route::middleware(['auth', 'email.verified.custom', 'profile.complete', 'role:us
     Route::post('/bulk-ai/{session}/barang', [BulkIntakeController::class, 'addManual'])->name('bulk.items.store');
     Route::put('/bulk-ai/{session}/barang/{item}', [BulkIntakeController::class, 'updateItem'])->name('bulk.items.update');
     Route::delete('/bulk-ai/{session}/barang/{item}', [BulkIntakeController::class, 'deleteItem'])->name('bulk.items.destroy');
-    Route::post('/bulk-ai/{session}/simpan-keranjang', [BulkIntakeController::class, 'saveToCart'])->name('bulk.cart');
     Route::post('/bulk-ai/{session}/susun-pertanyaan', [BulkIntakeController::class, 'startQuestionnaire'])->name('bulk.questionnaire.start');
     Route::get('/bulk-ai/{session}/pertanyaan', [BulkIntakeController::class, 'questionnaire'])->name('bulk.questionnaire');
     Route::post('/bulk-ai/{session}/pertanyaan/autosave', [BulkIntakeController::class, 'saveAnswers'])->name('bulk.answers.autosave');

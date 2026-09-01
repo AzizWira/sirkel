@@ -10,8 +10,8 @@
 <div class="page-head">
     <div>
         <span class="eyebrow">{{ $session->isBulk() ? 'Bulk AI' : 'Cek kondisi' }} · {{ $items->count() }} kelompok</span>
-        <h2>Atur penyerahan sekali untuk semua</h2>
-        <p>Lokasi, jadwal, dan cara pengantaran cukup diisi satu kali. Tujuan tiap barang tetap dapat berbeda, lalu SIRKEL mencari apakah satu mitra dapat menangani semuanya.</p>
+        <h2>{{ $items->count() === 1 ? 'Atur penyerahan barang' : 'Atur penyerahan sekali untuk semua' }}</h2>
+        <p>Lokasi, jadwal, dan cara pengantaran cukup diisi satu kali. {{ $items->count() === 1 ? 'SIRKEL akan mencari mitra yang sesuai untuk barang ini.' : 'Tujuan tiap barang tetap dapat berbeda, lalu SIRKEL mencari apakah satu mitra dapat menangani semuanya.' }}</p>
     </div>
     <a class="btn" href="{{ route('user.intake.review',$session) }}">Kembali ke Review</a>
 </div>
@@ -64,7 +64,7 @@
         </div>
     </div>
 
-    <div class="field full location-picker" data-map-link-picker data-map-id="multi-handover-map" data-lat-id="multi-handover-lat" data-lng-id="multi-handover-lng" data-label-id="multi-handover-location-label" data-resolve-url="{{ route('user.map.resolve-link') }}">
+    <div class="field full location-picker" data-map-link-picker data-map-id="multi-handover-map" data-lat-id="multi-handover-lat" data-lng-id="multi-handover-lng" data-label-id="multi-handover-location-label" data-resolve-url="{{ route('user.map.resolve-link') }}" data-reverse-url="{{ route('regions.reverse') }}" data-district-id="multi-handover-district" data-village-id="multi-handover-village" data-region-status-id="multi-handover-region-status">
         <div class="split location-picker-head">
             <div>
                 <label data-location-title>Titik penjemputan *</label>
@@ -111,9 +111,10 @@
     </div>
     <div class="field"><label>Kecamatan *</label><select id="multi-handover-district" class="select" name="district" required><option value="">Pilih kecamatan</option>@foreach($districts as $d)<option value="{{ $d->name }}" @selected(old('district',$saved['district']??auth()->user()->district)===$d->name)>{{ $d->name }}</option>@endforeach</select></div>
     <div class="field"><label>Kelurahan *</label><select id="multi-handover-village" class="select" name="village" required><option value="">Pilih kecamatan dulu</option></select></div>
-    <div class="field"><label>Tanggal yang diinginkan *</label><input class="input" type="date" name="requested_date" value="{{ old('requested_date',$saved['requested_date']??'') }}" min="{{ now()->toDateString() }}" required></div>
-    <div class="field"><label>Rentang waktu</label><div class="cluster"><input class="input" style="width:140px" type="time" name="time_start" value="{{ old('time_start',$saved['time_start']??'') }}"><span>–</span><input class="input" style="width:140px" type="time" name="time_end" value="{{ old('time_end',$saved['time_end']??'') }}"></div><small>Wajib untuk penjemputan.</small></div>
-    <div class="field full"><button class="btn btn-primary">Susun Rencana Mitra</button><small>Langkah berikutnya akan mengecek apakah ada satu mitra yang cocok untuk semua barang. Jika tidak, SIRKEL memisahkan pilihan per kelompok.</small></div>
+    <div class="field full"><div id="multi-handover-region-status" class="text-sm muted" aria-live="polite">Kecamatan dan kelurahan tetap dapat dipilih manual. SIRKEL mencoba mengisinya saat titik lokasi berubah.</div></div>
+    <div class="field"><label data-date-label>Tanggal yang diinginkan *</label><input class="input" type="date" name="requested_date" value="{{ old('requested_date',$saved['requested_date']??'') }}" min="{{ now()->toDateString() }}" max="{{ now()->endOfYear()->toDateString() }}" required><small>Maksimal 31 Desember {{ now()->year }}.</small></div>
+    <div class="field"><label data-time-label>Rentang waktu</label><div class="cluster handover-time-range"><x-time-slot-select name="time_start" :value="old('time_start',$saved['time_start']??'')" data-handover-time/><span>–</span><x-time-slot-select name="time_end" :value="old('time_end',$saved['time_end']??'')" data-handover-time/></div><small>Format 24 jam setiap 30 menit; wajib untuk penjemputan.</small></div>
+    <div class="field full"><button class="btn btn-primary" data-region-dependent-submit>Susun Rencana Mitra</button><small>Langkah berikutnya akan mengecek apakah ada satu mitra yang cocok untuk semua barang. Jika tidak, SIRKEL memisahkan pilihan per kelompok.</small></div>
 </form>
 @endsection
 @push('scripts')

@@ -85,7 +85,7 @@ class AssetController extends Controller
             'quantity' => 'required|integer|min:1|max:999',
             'condition_class' => 'nullable|string|max:60',
             'estimated_weight_kg' => 'nullable|numeric|min:0|max:9999',
-            'dormant_since' => 'nullable|date',
+            'dormant_since' => 'nullable|date|before_or_equal:today',
             'origin_district' => 'required|string|max:100',
             'origin_village' => 'required|string|max:100',
             'photos' => 'required|array|min:1|max:3',

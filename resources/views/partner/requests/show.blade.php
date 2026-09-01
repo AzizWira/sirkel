@@ -138,7 +138,10 @@
                     <details class="advanced-box mt-16">
                         <summary>Usulkan waktu lain</summary>
                         <form class="stack mt-16" method="post" action="{{ route('partner.requests.propose-time',$handover) }}">@csrf
-                            <div class="field"><label>Tanggal & waktu usulan</label><input class="input" type="datetime-local" name="proposed_time" required></div>
+                            <div class="form-grid">
+                                <div class="field"><label>Tanggal usulan</label><input class="input" type="date" name="proposed_date" min="{{ now()->toDateString() }}" max="{{ now()->endOfYear()->toDateString() }}" required><small>Maksimal 31 Desember {{ now()->year }}.</small></div>
+                                <div class="field"><label>Waktu usulan</label><x-time-slot-select name="proposed_clock" required/><small>Format 24 jam setiap 30 menit.</small></div>
+                            </div>
                             <button class="btn">Kirim Usulan Jadwal</button>
                         </form>
                     </details>

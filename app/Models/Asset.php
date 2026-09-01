@@ -66,4 +66,8 @@ class Asset extends Model
     {
         return $this->hasOne(DonationProof::class);
     }
+    public function issueReports()
+    {
+        return $this->hasMany(IssueReport::class);
+    }
 }

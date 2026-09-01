@@ -110,7 +110,9 @@
 
     <div class="card location-picker" data-map-link-picker data-map-id="partner-map" data-lat-id="partner-lat"
         data-lng-id="partner-lng" data-label-id="partner-location-label"
-        data-resolve-url="{{ $partnerMode ? route('partner.map.resolve-link') : route('user.map.resolve-link') }}">
+        data-resolve-url="{{ $partnerMode ? route('partner.map.resolve-link') : route('user.map.resolve-link') }}"
+        data-reverse-url="{{ route('regions.reverse') }}" data-district-id="partner-district"
+        data-village-id="partner-village" data-region-status-id="partner-region-status">
         <div class="split location-picker-head">
             <div>
                 <h3>Lokasi & Radius Penjemputan</h3>
@@ -162,6 +164,7 @@
             value="{{ old('latitude', $profile?->latitude ?? -7.2575) }}">
         <input id="partner-lng" type="hidden" name="longitude"
             value="{{ old('longitude', $profile?->longitude ?? 112.7521) }}">
+        <div id="partner-region-status" class="text-sm muted mt-8" aria-live="polite">Kecamatan dan kelurahan dapat dipilih manual. Saat titik lokasi berubah, SIRKEL akan mencoba mengisinya otomatis.</div>
         <div class="form-grid mt-16">
             <div class="field full"><label>Radius penjemputan (km) *</label><input class="input" type="number"
                     name="pickup_radius_km" min="1" max="100" step="0.5"

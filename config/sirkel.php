@@ -14,6 +14,9 @@ return [
         'monthly_budget_usd' => (float) env('OPENAI_MONTHLY_BUDGET_USD', 20),
         'escalation_confidence' => (float) env('OPENAI_ESCALATION_CONFIDENCE', .65),
         'image_detail' => env('OPENAI_IMAGE_DETAIL', 'low'),
+        'image_max_dimension' => (int) env('OPENAI_IMAGE_MAX_DIMENSION', 1600),
+        'image_jpeg_quality' => (int) env('OPENAI_IMAGE_JPEG_QUALITY', 82),
+        'image_optimize_min_bytes' => (int) env('OPENAI_IMAGE_OPTIMIZE_MIN_BYTES', 350000),
         // HTTP reliability: connect timeout protects slow DNS/TCP resolution, while
         // request timeout covers the full OpenAI response. max_attempts includes
         // the first call, so 2 = one retry after a transient connection/429/5xx failure.
@@ -41,5 +44,9 @@ return [
     'binderbyte' => [
         'base_url' => env('BINDERBYTE_BASE_URL', 'https://api.binderbyte.com'),
         'api_key' => env('BINDERBYTE_API_KEY'),
+    ],
+    'reverse_geocoding' => [
+        'url' => env('REVERSE_GEOCODING_URL', 'https://nominatim.openstreetmap.org/reverse'),
+        'timeout' => (int) env('REVERSE_GEOCODING_TIMEOUT', 8),
     ],
 ];

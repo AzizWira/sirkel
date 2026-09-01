@@ -12,7 +12,7 @@ use App\Models\{
     IntakeSessionPhoto,
     User
 };
-use App\Services\{AiQuotaService, AiService, AssetEventService, RuleEngine};
+use App\Services\{AiQuotaService, AiService, AssetEventService, IntakeSessionStateService, RuleEngine};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,24 +24,58 @@ class BulkIntakeController extends Controller
 
     public function create(Request $request, AiQuotaService $quota)
     {
+        $sessionState = app(IntakeSessionStateService::class);
+        $activeSessions = IntakeSession::query()
+            ->with(['items.asset.category', 'items.asset.requests', 'photos'])
+            ->where('user_id', $request->user()->id)
+            ->where('mode', IntakeSession::MODE_BULK_AI)
+            ->whereIn('status', [
+                IntakeSession::STATUS_DRAFT,
+                IntakeSession::STATUS_QUESTIONNAIRE,
+                IntakeSession::STATUS_REVIEW,
+            ])
+            ->latest('id')
+            ->get()
+            ->each(fn (IntakeSession $session) => $sessionState->reconcile($session))
+            ->filter(fn (IntakeSession $session) => in_array($session->status, [
+                IntakeSession::STATUS_DRAFT,
+                IntakeSession::STATUS_QUESTIONNAIRE,
+                IntakeSession::STATUS_REVIEW,
+            ], true))
+            ->values();
+
         return view('user.bulk.create', [
             'quota' => $quota->status($request->user(), AiQuotaService::BULK_AI),
+            'activeSessions' => $activeSessions,
         ]);
     }
 
     public function store(Request $request, AiQuotaService $quota, AiService $ai)
     {
         $request->validate([
-            'photos' => 'required|array|min:1|max:3',
-            'photos.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'photos' => 'nullable|array|max:3',
+            'photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'camera_photos' => 'nullable|array|max:3',
+            'camera_photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
+
+        $photos = collect([
+            ...$request->file('photos', []),
+            ...$request->file('camera_photos', []),
+        ])->filter()->values()->all();
+        if (count($photos) < 1) {
+            throw ValidationException::withMessages(['photos' => 'Tambahkan minimal 1 foto untuk memulai Bulk AI.']);
+        }
+        if (count($photos) > 3) {
+            throw ValidationException::withMessages(['photos' => 'Maksimal 3 foto untuk satu sesi Bulk AI.']);
+        }
 
         if (!$quota->canUse($request->user(), AiQuotaService::BULK_AI)) {
             return back()->withErrors(['photos' => 'Kuota Bulk AI Anda sudah habis. Tambah kuota untuk memulai sesi baru.']);
         }
 
         $categories = $this->categories();
-        $result = $ai->draftBulkIntake($request->file('photos', []), $categories);
+        $result = $ai->draftBulkIntake($photos, $categories);
         if (!$result) {
             return back()->withErrors(['photos' => $ai->userFacingFailureMessage('Bulk AI belum dapat membaca foto. Coba lagi atau gunakan pendaftaran biasa.')]);
         }
@@ -49,7 +83,7 @@ class BulkIntakeController extends Controller
             return back()->withErrors(['photos' => $result['eligibility_reason'] ?? 'Foto belum sesuai untuk Bulk AI.']);
         }
 
-        $session = DB::transaction(function () use ($request, $result, $quota) {
+        $session = DB::transaction(function () use ($request, $result, $quota, $photos) {
             // Re-check di bawah row lock agar dua tab yang mulai bersamaan tidak dapat
             // menghabiskan satu slot kuota terakhir menjadi dua sesi. AI mungkin sudah
             // dipanggil, tetapi sesi kedua tidak boleh memperoleh kuota yang tidak ada.
@@ -71,7 +105,7 @@ class BulkIntakeController extends Controller
                 'quota_consumed_at' => now(),
             ]);
 
-            foreach ($request->file('photos', []) as $index => $file) {
+            foreach ($photos as $index => $file) {
                 $path = $file->store('bulk-intake/' . $session->public_id, 'public');
                 IntakeSessionPhoto::create([
                     'intake_session_id' => $session->id,
@@ -101,7 +135,16 @@ class BulkIntakeController extends Controller
     {
         $this->own($session, $request);
         abort_unless($session->isBulk(), 404);
-        abort_unless($session->status === IntakeSession::STATUS_DRAFT, 422, 'Sesi Bulk ini sudah masuk tahap berikutnya.');
+        if ($session->status !== IntakeSession::STATUS_DRAFT) {
+            return match ($session->status) {
+                IntakeSession::STATUS_QUESTIONNAIRE => redirect()->route('user.bulk.questionnaire', $session)
+                    ->with('success', 'Sesi Bulk sudah berada pada tahap pertanyaan. Anda diarahkan ke progres terbaru.'),
+                IntakeSession::STATUS_REVIEW => redirect()->route('user.intake.review', $session)
+                    ->with('success', 'Sesi Bulk sudah selesai diperiksa. Anda diarahkan ke review terbaru.'),
+                default => redirect()->route('user.bulk.create')
+                    ->with('success', 'Tahap sesi Bulk sudah berubah. Buka sesi aktif dari halaman Bulk AI.'),
+            };
+        }
         $session->load(['items.asset.category.group', 'photos']);
 
         return view('user.bulk.edit', [
@@ -138,6 +181,8 @@ class BulkIntakeController extends Controller
                     'description' => mb_substr($description, 0, 1200),
                     'brand' => $asset->brand ?: ($data['brand'] ?? null),
                     'model_name' => $asset->model_name ?: ($data['model_name'] ?? null),
+                    'estimated_weight_kg' => $asset->estimated_weight_kg ?? ($data['estimated_weight_kg'] ?? null),
+                    'dormant_since' => $asset->dormant_since ?? ($data['dormant_since'] ?? null),
                 ]);
             });
             return back()->with('success', 'Barang sejenis digabung ke kelompok yang sudah ada, sehingga tidak memakai slot baru.');
@@ -189,25 +234,6 @@ class BulkIntakeController extends Controller
             $asset->delete();
         });
         return back()->with('success', 'Kelompok barang dihapus dari sesi Bulk AI.');
-    }
-
-    public function saveToCart(Request $request, IntakeSession $session)
-    {
-        $this->ownDraft($session, $request);
-        abort_if($session->items()->count() < 1, 422, 'Tambahkan minimal satu kelompok barang.');
-
-        DB::transaction(function () use ($session) {
-            $session->load(['items.asset', 'photos']);
-            foreach ($session->items as $item) {
-                $asset = $item->asset;
-                $this->attachSessionPhotos($session, $asset);
-                $asset->update(['status' => 'cart']);
-                app(AssetEventService::class)->add($asset, 'CART_ADDED', 'Disimpan ke Keranjang', 'Kelompok barang dari Bulk AI disimpan untuk diproses nanti.');
-            }
-            $session->update(['status' => IntakeSession::STATUS_CARTED, 'completed_at' => now()]);
-        });
-
-        return redirect()->route('user.cart.index')->with('success', 'Hasil Bulk AI disimpan ke Keranjang. Saat proses Standard, pilih maksimal 3 kelompok.');
     }
 
     public function startQuestionnaire(Request $request, IntakeSession $session, AiService $ai)
@@ -267,7 +293,7 @@ class BulkIntakeController extends Controller
         $questions = array_values(array_slice((array) $session->adaptive_questions_json, 0, self::MAX_QUESTIONS));
         $answers = $this->sanitizeBulkAnswers((array) $request->input('answers', []), $questions, false);
         $session->update(['adaptive_answers_json' => $answers]);
-        return redirect()->route('user.cart.index')->with('success', 'Progres Bulk AI disimpan. Membuka sesi yang sama tidak memakai kuota tambahan.');
+        return redirect()->route('user.bulk.create')->with('success', 'Progres Bulk AI disimpan. Lanjutkan sesi yang sama dari halaman Bulk AI tanpa memakai kuota tambahan.');
     }
 
     public function complete(Request $request, IntakeSession $session)
@@ -319,6 +345,8 @@ class BulkIntakeController extends Controller
             'description' => 'required|string|min:5|max:1200',
             'brand' => 'nullable|string|max:80',
             'model_name' => 'nullable|string|max:100',
+            'estimated_weight_kg' => 'nullable|numeric|min:0|max:9999',
+            'dormant_since' => 'nullable|date|before_or_equal:today',
         ]);
         $data['tracking_type'] = ((int) $data['quantity'] > 1) ? 'batch' : 'individual';
         return $data;
@@ -363,6 +391,8 @@ class BulkIntakeController extends Controller
             'custom_item_name' => $custom,
             'brand' => $data['brand'] ?? null,
             'model_name' => $data['model_name'] ?? null,
+            'estimated_weight_kg' => $data['estimated_weight_kg'] ?? null,
+            'dormant_since' => $data['dormant_since'] ?? null,
             'description' => $data['description'] ?? 'Kondisi akan dikonfirmasi pada sesi Bulk AI.',
             'quantity' => $quantity,
             'status' => 'bulk_draft',

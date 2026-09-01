@@ -19,7 +19,7 @@ class IntakeSessionStateService
      */
     public function actionableItems(IntakeSession $session): Collection
     {
-        $session->loadMissing(['items.asset.requests']);
+        $session->loadMissing(['items.asset.requests', 'items.asset.issueReports']);
 
         return $session->items
             ->filter(fn (IntakeSessionItem $item) => $this->stateForItem($item) === self::ITEM_ACTIONABLE)
@@ -28,7 +28,7 @@ class IntakeSessionStateService
 
     public function stateForItem(IntakeSessionItem $item): string
     {
-        $item->loadMissing('asset.requests');
+        $item->loadMissing(['asset.requests', 'asset.issueReports']);
         $asset = $item->asset;
 
         if (! $asset) {
@@ -43,6 +43,15 @@ class IntakeSessionStateService
         // that has already created a request continues from Asset/Activity,
         // even if that request later becomes terminal (declined/cancelled/etc.).
         if ($asset->core_locked_at || $asset->requests->isNotEmpty()) {
+            return self::ITEM_IN_PROGRESS;
+        }
+
+        $needsSirkelAssistance = $asset->issueReports->contains(fn ($issue) =>
+            $issue->category === 'matching_help'
+            && in_array($issue->status, ['open', 'in_review'], true)
+            && is_array($issue->context_json)
+        );
+        if ($needsSirkelAssistance) {
             return self::ITEM_IN_PROGRESS;
         }
 
@@ -66,7 +75,7 @@ class IntakeSessionStateService
 
         // Re-read item/request relations: a handover may have been created earlier
         // in the same HTTP request while these relations were already loaded.
-        $session->load(['items.asset.requests']);
+        $session->load(['items.asset.requests', 'items.asset.issueReports']);
         if ($session->items->isEmpty()) {
             return $session;
         }

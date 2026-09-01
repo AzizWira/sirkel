@@ -353,9 +353,9 @@ class HandoverController extends Controller
             'address' => 'nullable|required_if:method,pickup|string|max:500',
             'district' => 'required|string|max:100',
             'village' => 'required|string|max:100',
-            'requested_date' => 'required|date|after_or_equal:today',
-            'time_start' => 'nullable|required_if:method,pickup|date_format:H:i',
-            'time_end' => 'nullable|required_if:method,pickup|date_format:H:i|after:time_start',
+            'requested_date' => 'required|date|after_or_equal:today|before_or_equal:'.now()->endOfYear()->toDateString(),
+            'time_start' => ['nullable', 'required_if:method,pickup', 'date_format:H:i', 'regex:/^(?:[01]\d|2[0-3]):(?:00|30)$/'],
+            'time_end' => ['nullable', 'required_if:method,pickup', 'date_format:H:i', 'regex:/^(?:[01]\d|2[0-3]):(?:00|30)$/', 'after:time_start'],
         ];
 
         if ($withPartner) {

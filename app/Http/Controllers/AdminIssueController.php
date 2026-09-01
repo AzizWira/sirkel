@@ -202,7 +202,9 @@ class AdminIssueController extends Controller
 
         try {
             $parsed = Carbon::parse($date)->startOfDay();
-            return $parsed->lt(today()) ? null : $parsed->toDateString();
+            return $parsed->lt(today()) || $parsed->gt(now()->endOfYear())
+                ? null
+                : $parsed->toDateString();
         } catch (\Throwable) {
             return null;
         }

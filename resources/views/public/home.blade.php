@@ -61,7 +61,7 @@
                 @endauth
                 <a class="btn" href="{{ route('public.partners') }}">Cari Mitra</a>
             </div>
-            <p class="text-sm muted" style="margin-top:18px">Mulai dari Gunung Anyar, untuk Surabaya.</p>
+            <p class="text-sm muted" style="margin-top:18px">Dirancang untuk membantu penanganan elektronik tak terpakai di Surabaya.</p>
         </div>
 
         <div class="hero-panel">

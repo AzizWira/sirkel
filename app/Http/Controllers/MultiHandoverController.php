@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Asset, HandoverRequest, IntakeSession, PartnerProfile};
+use App\Enums\UserRole;
+use App\Models\{Asset, HandoverRequest, IntakeSession, IssueReport, PartnerProfile, User};
 use App\Services\{AssetEventService, IntakeSessionStateService, NotificationService, PartnerMatchingService, RegionService};
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -80,6 +81,8 @@ class MultiHandoverController extends Controller
         $hasUnavailablePartner = collect($byAsset)->contains(function ($partners) {
             return $partners->isEmpty();
         });
+        $assistanceCount = collect($byAsset)->filter(fn ($partners) => $partners->isEmpty())->count();
+        $matchedCount = max(0, $items->count() - $assistanceCount);
 
         $commonWhatsappByPartner = [];
         foreach ($commonPartners as $partner) {
@@ -107,6 +110,8 @@ class MultiHandoverController extends Controller
             'partnersByAsset' => $byAsset,
             'commonPartners' => $commonPartners,
             'hasUnavailablePartner' => $hasUnavailablePartner,
+            'assistanceCount' => $assistanceCount,
+            'matchedCount' => $matchedCount,
             'commonWhatsappByPartner' => $commonWhatsappByPartner,
             'partnerWhatsappByAsset' => $partnerWhatsappByAsset,
         ]);
@@ -124,42 +129,139 @@ class MultiHandoverController extends Controller
             'common_partner' => 'nullable|string|size:26',
             'partners' => 'nullable|array',
             'partners.*' => 'nullable|string|size:26',
+            'assist' => 'nullable|array',
+            'assist.*' => 'nullable|accepted',
             'ownership_acknowledgement' => 'required|accepted',
         ]);
 
         $matcher = app(PartnerMatchingService::class);
-        $selections = [];
+        $outcomes = [];
         foreach ($items as $item) {
             $asset = $item->asset;
-            $selectedPublicId = $data['common_partner'] ?? ($data['partners'][$asset->public_id] ?? null);
-            if (! $selectedPublicId) {
-                throw ValidationException::withMessages(['partners' => 'Pilih mitra untuk setiap kelompok barang.']);
-            }
-            $partner = PartnerProfile::where('public_id', $selectedPublicId)->first();
-            if (! $partner) {
-                throw ValidationException::withMessages(['partners' => 'Salah satu mitra tidak lagi tersedia. Muat ulang rencana mitra.']);
-            }
             $type = (string) ($context['handover_types'][$asset->public_id] ?? '');
-            $valid = $matcher->match(
+            $candidates = $matcher->match(
                 $asset,
                 $context['method'],
                 (float) $context['latitude'],
                 (float) $context['longitude'],
                 $type,
                 $context['district']
-            )->contains(fn ($candidate) => (int) $candidate->id === (int) $partner->id);
+            )->values();
+            $selectedPublicId = $data['common_partner'] ?? ($data['partners'][$asset->public_id] ?? null);
+            if (! $selectedPublicId) {
+                $assistanceApproved = filter_var(
+                    $data['assist'][$asset->public_id] ?? false,
+                    FILTER_VALIDATE_BOOLEAN
+                );
+                if (! $assistanceApproved || $candidates->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        'partners' => 'Pilih mitra untuk setiap kelompok yang memiliki pilihan. Muat ulang halaman jika hasil pencarian berubah.',
+                    ]);
+                }
+                $outcomes[] = ['kind' => 'assistance', 'asset' => $asset, 'type' => $type];
+                continue;
+            }
+            $partner = PartnerProfile::where('public_id', $selectedPublicId)->first();
+            if (! $partner) {
+                throw ValidationException::withMessages(['partners' => 'Salah satu mitra tidak lagi tersedia. Muat ulang rencana mitra.']);
+            }
+            $valid = $candidates->contains(fn ($candidate) => (int) $candidate->id === (int) $partner->id);
             if (! $valid) {
                 throw ValidationException::withMessages(['partners' => $partner->business_name.' tidak lagi sesuai untuk '.$asset->passport_code.'. Muat ulang halaman.']);
             }
-            $selections[] = [$asset, $partner, $type];
+            $outcomes[] = ['kind' => 'partner', 'asset' => $asset, 'partner' => $partner, 'type' => $type];
         }
 
-        $handovers = DB::transaction(function () use ($request, $session, $context, $selections, $matcher) {
+        $result = DB::transaction(function () use ($request, $session, $context, $outcomes, $matcher) {
             $created = [];
-            foreach ($selections as [$asset, $partner, $type]) {
+            $assistanceIssues = [];
+            foreach ($outcomes as $outcome) {
+                $asset = $outcome['asset'];
+                $type = $outcome['type'];
                 $locked = Asset::whereKey($asset->id)->lockForUpdate()->firstOrFail();
                 abort_if($locked->final_path || $locked->core_locked_at, 422, 'Salah satu barang sudah tidak dapat membuat penyerahan baru.');
                 abort_if($locked->requests()->whereNotIn('status', HandoverRequest::TERMINAL_STATUSES)->exists(), 422, 'Salah satu barang sudah memiliki penyerahan aktif.');
+
+                if ($outcome['kind'] === 'assistance') {
+                    $stillUnmatched = $matcher->match(
+                        $locked,
+                        $context['method'],
+                        (float) $context['latitude'],
+                        (float) $context['longitude'],
+                        $type,
+                        $context['district']
+                    )->isEmpty();
+                    abort_unless($stillUnmatched, 422, 'Mitra baru tersedia untuk salah satu barang. Muat ulang halaman agar pilihan terbaru dapat ditampilkan.');
+
+                    $assistanceContext = array_intersect_key($context, array_flip([
+                        'method',
+                        'latitude',
+                        'longitude',
+                        'address',
+                        'district',
+                        'village',
+                        'requested_date',
+                        'time_start',
+                        'time_end',
+                    ]));
+                    $assistanceContext += [
+                        'handover_type' => $type,
+                        'authorized_at' => now()->toIso8601String(),
+                        'intake_session' => $session->public_id,
+                        'outcome' => 'needs_sirkel_assistance',
+                    ];
+
+                    $issue = IssueReport::query()
+                        ->where('reporter_user_id', $request->user()->id)
+                        ->where('asset_id', $locked->id)
+                        ->where('category', 'matching_help')
+                        ->whereIn('status', ['open', 'in_review'])
+                        ->lockForUpdate()
+                        ->latest('id')
+                        ->first();
+                    $issueData = [
+                        'description' => 'Belum ada mitra yang cocok saat rencana multi-barang dikirim. Barang masuk antrean bantuan SIRKEL untuk penentuan mitra.',
+                        'context_json' => $assistanceContext,
+                        'status' => 'open',
+                        'handover_request_id' => null,
+                        'resolved_by' => null,
+                        'resolved_at' => null,
+                    ];
+                    if ($issue) {
+                        $issue->update($issueData);
+                    } else {
+                        $issue = IssueReport::create($issueData + [
+                            'reporter_user_id' => $request->user()->id,
+                            'asset_id' => $locked->id,
+                            'category' => 'matching_help',
+                        ]);
+                    }
+
+                    $locked->update([
+                        'status' => 'matching_assistance',
+                        'handover_type' => $type,
+                    ]);
+                    app(AssetEventService::class)->add(
+                        $locked,
+                        'SIRKEL_MATCH_ASSISTANCE_REQUESTED',
+                        'Butuh bantuan SIRKEL menentukan mitra',
+                        'Belum ada mitra yang cocok. Barang masuk antrean bantuan Admin SIRKEL.',
+                        ['issue_report_id' => $issue->id, 'intake_session' => $session->public_id]
+                    );
+                    $assistanceIssues[] = $issue;
+                    continue;
+                }
+
+                $partner = PartnerProfile::whereKey($outcome['partner']->id)->lockForUpdate()->firstOrFail();
+                $stillValid = $matcher->match(
+                    $locked,
+                    $context['method'],
+                    (float) $context['latitude'],
+                    (float) $context['longitude'],
+                    $type,
+                    $context['district']
+                )->contains(fn ($candidate) => (int) $candidate->id === (int) $partner->id);
+                abort_unless($stillValid, 422, $partner->business_name.' tidak lagi tersedia untuk rencana ini. Muat ulang halaman.');
 
                 $distance = $matcher->haversine(
                     (float) $context['latitude'], (float) $context['longitude'],
@@ -193,12 +295,12 @@ class MultiHandoverController extends Controller
                 ]);
                 $created[] = $handover;
             }
-            return $created;
+            return ['handovers' => $created, 'issues' => $assistanceIssues];
         });
 
         app(IntakeSessionStateService::class)->reconcile($session);
 
-        foreach ($handovers as $handover) {
+        foreach ($result['handovers'] as $handover) {
             app(NotificationService::class)->send(
                 $handover->partner->user,
                 'Permintaan baru SIRKEL',
@@ -207,7 +309,24 @@ class MultiHandoverController extends Controller
             );
         }
 
-        return redirect()->route('user.activity')->with('success', count($handovers).' permintaan penyerahan berhasil dikirim. Data lokasi dan jadwal cukup diisi satu kali untuk rencana ini.');
+        if ($result['issues'] !== []) {
+            User::query()->where('role', UserRole::ADMIN->value)->get()->each(function (User $admin) use ($result) {
+                app(NotificationService::class)->send(
+                    $admin,
+                    count($result['issues']).' barang membutuhkan penentuan mitra',
+                    'Pengajuan multi-barang masuk antrean bantuan SIRKEL karena belum memiliki mitra yang cocok.',
+                    route('admin.issues.index'),
+                    false
+                );
+            });
+        }
+
+        $message = count($result['handovers']).' permintaan berhasil dikirim ke mitra.';
+        if ($result['issues'] !== []) {
+            $message .= ' '.count($result['issues']).' barang masuk antrean bantuan SIRKEL untuk penentuan mitra.';
+        }
+
+        return redirect()->route('user.activity')->with('success', $message.' Data lokasi dan jadwal cukup diisi satu kali untuk rencana ini.');
     }
 
     private function validateContext(Request $request, $items): array
@@ -219,9 +338,9 @@ class MultiHandoverController extends Controller
             'address' => 'nullable|required_if:method,pickup|string|max:500',
             'district' => 'required|string|max:100',
             'village' => 'required|string|max:100',
-            'requested_date' => 'required|date|after_or_equal:today',
-            'time_start' => 'nullable|required_if:method,pickup|date_format:H:i',
-            'time_end' => 'nullable|required_if:method,pickup|date_format:H:i|after:time_start',
+            'requested_date' => 'required|date|after_or_equal:today|before_or_equal:'.now()->endOfYear()->toDateString(),
+            'time_start' => ['nullable', 'required_if:method,pickup', 'date_format:H:i', 'regex:/^(?:[01]\d|2[0-3]):(?:00|30)$/'],
+            'time_end' => ['nullable', 'required_if:method,pickup', 'date_format:H:i', 'regex:/^(?:[01]\d|2[0-3]):(?:00|30)$/', 'after:time_start'],
             'handover_types' => 'required|array',
         ];
         foreach ($items as $item) {

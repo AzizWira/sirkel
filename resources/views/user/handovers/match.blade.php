@@ -57,7 +57,9 @@
 
         <div class="field full location-picker" data-map-link-picker data-map-id="handover-map" data-lat-id="handover-lat"
             data-lng-id="handover-lng" data-label-id="handover-location-label"
-            data-resolve-url="{{ route('user.map.resolve-link') }}">
+            data-resolve-url="{{ route('user.map.resolve-link') }}" data-reverse-url="{{ route('regions.reverse') }}"
+            data-district-id="handover-district" data-village-id="handover-village"
+            data-region-status-id="handover-region-status">
             <div class="split location-picker-head">
                 <div>
                     <label data-location-title>Titik penjemputan *</label>
@@ -129,12 +131,12 @@
                 <option value="">Pilih kecamatan dulu</option>
             </select></div>
 
+        <div class="field full"><div id="handover-region-status" class="text-sm muted" aria-live="polite">Kecamatan dan kelurahan dapat dipilih manual. Saat titik peta, GPS, atau link diubah, SIRKEL akan mencoba mengisinya otomatis.</div></div>
+
         <div class="field"><label data-date-label>Tanggal yang diinginkan *</label><input class="input" type="date"
-                name="requested_date" value="{{ old('requested_date') }}" min="{{ now()->toDateString() }}"></div>
+                name="requested_date" value="{{ old('requested_date') }}" min="{{ now()->toDateString() }}" max="{{ now()->endOfYear()->toDateString() }}" required><small>Maksimal 31 Desember {{ now()->year }}.</small></div>
         <div class="field"><label data-time-label>Rentang waktu *</label>
-            <div class="cluster"><input class="input" style="width:140px" type="time" name="time_start"
-                    value="{{ old('time_start') }}"><span>–</span><input class="input" style="width:140px" type="time"
-                    name="time_end" value="{{ old('time_end') }}"></div>
+            <div class="cluster handover-time-range"><x-time-slot-select name="time_start" :value="old('time_start')" data-handover-time/><span>–</span><x-time-slot-select name="time_end" :value="old('time_end')" data-handover-time/></div><small>Format 24 jam, tersedia setiap 30 menit.</small>
         </div>
 
         <div class="field full">
@@ -143,7 +145,7 @@
             </div>
         </div>
 
-        <div class="field full"><button class="btn btn-primary">Cari Mitra yang Cocok</button></div>
+        <div class="field full"><button class="btn btn-primary" data-region-dependent-submit>Cari Mitra yang Cocok</button></div>
     </form>
 @endsection
 

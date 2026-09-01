@@ -82,8 +82,12 @@ class V1045HandoverDonationCameraUxTest extends TestCase
 
         $this->assertStringContainsString('data-asset-camera', $assetCreate);
         $this->assertStringContainsString('capture="environment"', $assetCreate);
-        $this->assertStringContainsString('data-camera-file-picker', $bulkCreate);
-        $this->assertStringContainsString('capture="environment"', $bulkCreate);
+        $this->assertStringContainsString('data-bulk-photo-picker', $bulkCreate);
+        $this->assertStringContainsString('data-bulk-photo-gallery', $bulkCreate);
+        $this->assertStringContainsString('data-bulk-photo-camera', $bulkCreate);
+        $this->assertStringContainsString('data-bulk-camera-modal', $bulkCreate);
+        $this->assertStringContainsString('navigator.mediaDevices?.getUserMedia', $js);
+        $this->assertStringContainsString("setAttribute('capture', 'environment')", $js);
         $this->assertGreaterThanOrEqual(2, substr_count($partnerOnboarding, 'data-camera-file-picker'));
         $this->assertGreaterThanOrEqual(2, substr_count($partnerOnboarding, 'capture="environment"'));
         $this->assertStringContainsString('data-camera-file-picker', $partnerAsset);

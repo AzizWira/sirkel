@@ -13,11 +13,9 @@
     </div>
     <div class="cluster">
         <a class="btn" href="{{ route('user.cart.index') }}">Keranjang</a>
-        @if($session->status === \App\Models\IntakeSession::STATUS_REVIEW && $actionableCount > 0)
-            <a class="btn btn-primary" href="{{ route('user.intake.handover.form', $session) }}">
-                {{ $actionableCount === $allCount ? 'Atur Penyerahan Semua' : 'Atur Penyerahan Tersisa' }}
-            </a>
-        @else
+        @if($session->status === \App\Models\IntakeSession::STATUS_REVIEW && $actionableCount > 1)
+            <a class="btn btn-primary" href="{{ route('user.intake.handover.form', $session) }}">Atur Penyerahan Semua</a>
+        @elseif($session->status !== \App\Models\IntakeSession::STATUS_REVIEW || $actionableCount === 0)
             <span class="badge success">Proses ini sudah dilanjutkan</span>
         @endif
     </div>
@@ -41,20 +39,20 @@
         $assessment = $asset?->assessments?->where('assessment_type', 'user')->sortByDesc('id')->first();
         $state = $reviewStates[$item->id] ?? \App\Services\IntakeSessionStateService::ITEM_UNAVAILABLE;
     @endphp
-    <div class="card stack">
-        <div class="split">
-            <div>
+    <div class="card stack review-item-card">
+        <div class="review-item-head">
+            <div class="review-item-identity">
                 <strong>{{ $asset->custom_item_name ?: $asset->category?->name }}{{ $asset->quantity > 1 ? ' ×'.$asset->quantity : '' }}</strong>
-                <div class="muted text-sm">{{ $asset->passport_code }}</div>
+                <div class="muted text-sm review-item-passport">{{ $asset->passport_code }}</div>
             </div>
             @if($state === \App\Services\IntakeSessionStateService::ITEM_ACTIONABLE)
-                <span class="badge warning">Siap dilanjutkan</span>
+                <span class="badge warning review-item-status">Siap dilanjutkan</span>
             @elseif($state === \App\Services\IntakeSessionStateService::ITEM_FINISHED)
-                <span class="badge success">Penanganan selesai</span>
+                <span class="badge success review-item-status">Penanganan selesai</span>
             @elseif($state === \App\Services\IntakeSessionStateService::ITEM_IN_PROGRESS)
-                <span class="badge success">Sudah dilanjutkan</span>
+                <span class="badge success review-item-status">Sudah dilanjutkan</span>
             @else
-                <span class="badge">Belum siap</span>
+                <span class="badge review-item-status">Belum siap</span>
             @endif
         </div>
 
