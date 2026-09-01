@@ -88,7 +88,7 @@
 <div id="bulk-camera-modal" class="modal-backdrop asset-media-modal" aria-hidden="true" data-bulk-camera-modal>
     <div class="modal asset-camera-card" role="dialog" aria-modal="true" aria-labelledby="bulk-camera-title">
         <div class="asset-modal-head">
-            <div><h3 id="bulk-camera-title">Ambil Foto Bulk</h3><p class="muted mb-0">Kamera berjalan langsung di browser. Foto yang diambil akan masuk ke daftar Bulk dan masih dapat dihapus sebelum diproses.</p></div>
+            <div><h3 id="bulk-camera-title">Ambil Foto Bulk</h3><p class="muted mb-0">Kamera menampilkan seluruh frame tanpa crop. Area yang terlihat inilah yang akan masuk ke Bulk AI dan masih dapat dihapus sebelum diproses.</p></div>
             <button class="icon-button" type="button" aria-label="Tutup kamera" data-bulk-camera-close>×</button>
         </div>
         <div class="asset-camera-stage"><video autoplay playsinline muted data-bulk-camera-video></video></div>

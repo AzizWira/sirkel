@@ -81,6 +81,88 @@ function setSirkelModalVisibility(modal, open) {
     window.requestAnimationFrame(syncSirkelModalBodyLock);
 }
 
+let sirkelImagePreviewObjectUrl = null;
+
+function closeSirkelImagePreview() {
+    const modal = document.querySelector('[data-image-preview-modal]');
+    if (!modal) return;
+    setSirkelModalVisibility(modal, false);
+    const image = modal.querySelector('[data-image-preview-image]');
+    if (image) image.removeAttribute('src');
+    if (sirkelImagePreviewObjectUrl) {
+        URL.revokeObjectURL(sirkelImagePreviewObjectUrl);
+        sirkelImagePreviewObjectUrl = null;
+    }
+}
+
+function ensureSirkelImagePreviewModal() {
+    let modal = document.querySelector('[data-image-preview-modal]');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal-backdrop image-preview-modal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.dataset.imagePreviewModal = '';
+    modal.innerHTML = `
+        <div class="modal image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="sirkel-image-preview-title">
+            <div class="image-preview-head">
+                <strong id="sirkel-image-preview-title" data-image-preview-title>Preview foto</strong>
+                <button class="icon-button" type="button" aria-label="Tutup preview foto" data-image-preview-close>×</button>
+            </div>
+            <div class="image-preview-stage">
+                <img alt="Preview foto penuh" data-image-preview-image>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('[data-image-preview-close]')?.addEventListener('click', closeSirkelImagePreview);
+    modal.addEventListener('click', event => { if (event.target === modal) closeSirkelImagePreview(); });
+    return modal;
+}
+
+function openSirkelImagePreview(source, alt = 'Preview foto') {
+    if (!source) return;
+    const modal = ensureSirkelImagePreviewModal();
+    const image = modal.querySelector('[data-image-preview-image]');
+    const title = modal.querySelector('[data-image-preview-title]');
+    if (!image) return;
+
+    if (sirkelImagePreviewObjectUrl) {
+        URL.revokeObjectURL(sirkelImagePreviewObjectUrl);
+        sirkelImagePreviewObjectUrl = null;
+    }
+    if (source instanceof File || source instanceof Blob) {
+        sirkelImagePreviewObjectUrl = URL.createObjectURL(source);
+        image.src = sirkelImagePreviewObjectUrl;
+    } else {
+        image.src = String(source);
+    }
+    image.alt = alt || 'Preview foto penuh';
+    if (title) title.textContent = alt || 'Preview foto';
+    setSirkelModalVisibility(modal, true);
+    modal.querySelector('[data-image-preview-close]')?.focus();
+}
+
+function makeSirkelImagePreviewable(image, file = null) {
+    if (!(image instanceof HTMLImageElement) || image.dataset.imagePreviewBound === '1') return;
+    image.dataset.imagePreviewBound = '1';
+    image.classList.add('image-preview-trigger');
+    image.tabIndex = 0;
+    image.setAttribute('role', 'button');
+    image.setAttribute('aria-label', `${image.alt || 'Foto'} — buka preview penuh`);
+    image.title = 'Klik untuk melihat foto penuh';
+    const open = () => openSirkelImagePreview(file || image.currentSrc || image.src, image.alt || 'Preview foto');
+    image.addEventListener('click', open);
+    image.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+    });
+}
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.querySelector('[data-image-preview-modal].show')) closeSirkelImagePreview();
+});
+
 window.confirmWhatsapp = (formId, phoneId) => {
     const form = document.getElementById(formId), phone = document.getElementById(phoneId), modal = document.getElementById('wa-confirm');
     if (!form || !phone || !modal) return;
@@ -339,10 +421,20 @@ document.addEventListener('DOMContentLoaded', () => {
 window.previewFiles = (input, targetId) => {
     const target = document.getElementById(targetId); if (!target) return;
     target.innerHTML = '';
-    [...(input.files || [])].slice(0, 3).forEach(file => {
-        const img = document.createElement('img'); img.src = URL.createObjectURL(file); img.alt = 'Preview foto'; target.appendChild(img);
+    [...(input.files || [])].slice(0, 3).forEach((file, index) => {
+        const img = document.createElement('img');
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        img.alt = `Preview foto ${index + 1}`;
+        img.onload = () => URL.revokeObjectURL(url);
+        makeSirkelImagePreviewable(img, file);
+        target.appendChild(img);
     });
 };
+
+window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.asset-photos img, .bulk-photo-strip img').forEach(image => makeSirkelImagePreviewable(image));
+});
 
 // v1.0.31 — photo picker + opt-in AI intake assistant.
 // Photos remain local to the form unless the citizen explicitly presses
@@ -406,6 +498,7 @@ function renderAssetPhotoSelection(state) {
         image.src = url;
         image.alt = `Preview foto ${index + 1}`;
         image.onload = () => URL.revokeObjectURL(url);
+        makeSirkelImagePreviewable(image, file);
 
         const badge = document.createElement('span');
         badge.className = 'asset-photo-index';
@@ -2364,6 +2457,7 @@ function bindBulkPhotoPicker(picker) {
             image.src = url;
             image.alt = `Preview foto Bulk ${index + 1}`;
             image.onload = () => URL.revokeObjectURL(url);
+            makeSirkelImagePreviewable(image, item.file);
             const badge = document.createElement('span');
             badge.className = 'asset-photo-index';
             badge.textContent = index === 0 ? 'Utama' : String(index + 1);

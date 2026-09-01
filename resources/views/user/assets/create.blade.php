@@ -92,7 +92,7 @@
 <div id="asset-camera-modal" class="modal-backdrop asset-media-modal" aria-hidden="true" data-asset-camera-modal>
     <div class="modal asset-camera-card" role="dialog" aria-modal="true" aria-labelledby="asset-camera-title">
         <div class="asset-modal-head">
-            <div><h3 id="asset-camera-title">Ambil Foto</h3><p class="muted mb-0">Kamera berjalan langsung di browser. Foto tetap bisa Anda hapus sebelum menyimpan.</p></div>
+            <div><h3 id="asset-camera-title">Ambil Foto</h3><p class="muted mb-0">Kamera menampilkan seluruh frame tanpa crop. Area yang terlihat inilah yang akan disimpan dan dibaca AI; foto tetap bisa Anda hapus sebelum menyimpan.</p></div>
             <button class="icon-button" type="button" aria-label="Tutup kamera" data-asset-camera-close>×</button>
         </div>
         <div class="asset-camera-stage"><video autoplay playsinline muted data-asset-camera-video></video></div>
